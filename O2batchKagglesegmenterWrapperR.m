@@ -85,7 +85,7 @@ end
     for iFolder = folderNumStart:folderNumEnd
         finalSampleFolderList{iFolder} = [mainPath filesep finalSampleFolderList{iFolder}];
         listing = dir([finalSampleFolderList{iFolder} filesep '*.tif']);
-        for iFile = 2: 2%numel(listing)
+        for iFile = 1: numel(listing)
             tic
             subpaths =paths;
             subp=p;
@@ -98,7 +98,7 @@ end
             subpaths.analysis = [subpaths.samplefolder paths.analysis filesep];
             subpaths.fileExt = FileExt;
             subp.paths = subpaths;
-            disp (['Processing ' listing(iFile).name])
+            disp (['Processing ' listing(iFile).name ' in folder ' subpaths.samplefolder])
             kagglesegmenterWrapper(subpaths.samplefolder,listing(iFile).name,subp);
             toc
         end

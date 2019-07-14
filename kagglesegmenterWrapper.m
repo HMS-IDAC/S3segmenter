@@ -264,7 +264,7 @@ clear nuclei
    end
    disp(['Segmented Cytoplasm'])
   
- imshowpair(bwperim(cytoplasmMask),imadjust(cyto))
+%  imshowpair(bwperim(cytoplasmMask),imadjust(cyto))
   
     %% measureFeatures
     if isequal(p.measureFeatures,'true')
@@ -276,7 +276,7 @@ clear nuclei
                 mainFile{end+1} = fName;
             end
         end
-        S3MeasureFeatures(cat(3,nucleiMaskRing,cytoplasmMaskRing),p.paths,fileName,'MedianIntensity',p.MedianIntensity,...
+        S3MeasureFeatures(cat(3,nucleiMaskTemp,cytoplasmMask),p.paths,fileName,'MedianIntensity',p.MedianIntensity,...
             'Docker',p.Docker,'crop',rect,'chanRange',p.chanRange);
         disp(['Measured all features'])
     end
