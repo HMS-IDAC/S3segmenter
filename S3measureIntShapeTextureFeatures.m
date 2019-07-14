@@ -7,7 +7,7 @@ function  [cellID, meanIntRegionTable, medianIntRegionTable,meanStdTable,meanEnt
 ip = inputParser;
 ip.addParamValue('MedianIntensity','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('Haralick','false',@(x)(ismember(x,{'true','false'})));
-ip.addParamValue('laws','false',@(x)(ismember(x,{'true','false'})));
+ip.addParamValue('laws','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('crop',[],@(x)(numel(x) == 4 & all(x > 0 )));  
 ip.parse(varargin{:});          
 p = ip.Results; 

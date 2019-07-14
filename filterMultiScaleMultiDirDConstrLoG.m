@@ -54,9 +54,11 @@ switch seedMethod
         end
 
     case 'globalThreshold'
-        imMultiscaleLoGResponse=imregionalmax(imhmax(imgaussfilt(image,downSample),downSample));
+%         imMultiscaleLoGResponse=imregionalmax(imhmax(imgaussfilt(image,downSample/30),downSample/30));
+        imMultiscaleLoGResponse=imregionalmax(imgaussfilt(uint8(imextendedmax(image,downSample)),1));
+        mask = imfill(mask,'holes');
         centers = mask.*imfill(bwmorph(imMultiscaleLoGResponse,'shrink','Inf'),'holes');
-% imshowpair(centers,image)
+
 %         invertImage =max(image(:))-image;
 %         Ilog = imresize(filterLoG(imresize(invertImage,0.25),1),size(mask));
 %         Imax = imregionalmax(Ilog).*(~mask);

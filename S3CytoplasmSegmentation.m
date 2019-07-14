@@ -40,8 +40,8 @@ end
                 cellMask = cellMask.*cast(mask,class(cellMask));
                 
             case 'bwdistanceTransform'
-                gdist = bwdist(cyto);
-                cytograd = imimposemin(gdist, (imerode(1-mask,strel('disk',5))) | nucleiMask>0 );
+                gdist = bwdist(nucleiMask>0);
+                cytograd = imimposemin(gdist, nucleiMask>0 );
                 cellMask=watershed(cytograd);
                 cellMask = cellMask.*cast(mask,class(cellMask));
             case 'contours'
@@ -49,7 +49,7 @@ end
                 contours = normalize(steerableDetector(im2double(cyto),2,1.5));
 
             case 'ring'
-                cellMask = bwlabel(bwmorph(nucleiMask>0,'thicken',3));
+                cellMask = bwlabel(bwmorph(nucleiMask>0,'thicken',9));
                 mask = ones(size(cellMask));
         end
 
