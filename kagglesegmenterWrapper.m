@@ -237,13 +237,13 @@ clear nuclei
             exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,'nuclei',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMask,cyto,outputPath,'cyto',p.saveFig,p.saveMasks)
             exportMasks(cellMask,cyto,outputPath,'cell',p.saveFig,p.saveMasks)
-            
+%             
             [cytoplasmMaskRing,nucleiMaskRing,cellMaskRing]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
                 'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample);
             exportMasks(nucleiMaskRing,nucleiCrop,outputPath,'nucleiRing',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMaskRing,cyto,outputPath,'cytoRing',p.saveFig,p.saveMasks)
             exportMasks(cellMaskRing,cyto,outputPath,'cellRing',p.saveFig,p.saveMasks)
-            
+%             
         case 'loadMask'
             listing = dir([p.paths.segmentation filePrefix filesep '*cytoplasmmask.tif']);
             if isempty(listing)
@@ -277,7 +277,7 @@ clear nuclei
             end
         end
         S3MeasureFeatures(cat(3,nucleiMaskTemp,cytoplasmMask),p.paths,fileName,'MedianIntensity',p.MedianIntensity,...
-            'Docker',p.Docker,'crop',rect,'chanRange',p.chanRange);
+            'Docker',p.Docker,'crop',rect,'chanRange',p.chanRange,'channelNames',[]);
         disp(['Measured all features'])
     end
     

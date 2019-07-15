@@ -82,20 +82,28 @@ end
         folderNumEnd = p.fileNum;
     end
 
-    for iFolder = folderNumStart:folderNumEnd
-        finalSampleFolderList{iFolder} = [mainPath filesep finalSampleFolderList{iFolder}];
-        listing = dir([finalSampleFolderList{iFolder} filesep '*.tif']);
-        for iFile = 1: numel(listing)
+    
+%% import metadata file
+    metadataListing= dir([mainPath filesep 'metadata' filesep '*channel_metadata*']);
+    M = readtable([metadataListing(1).folder filesep metadataListing(1).name]);
+    channelNames = [M.Properties.VariableNames;table2cell(M)];
+%% analysis    
+    for iFolder = 3:3%folderNumStart:folderNumEnd
+        
+        listing = dir([mainPath filesep finalSampleFolderList{iFolder} filesep '*.tif']);
+        parfor iFile = 1: numel(listing)
             tic
             subpaths =paths;
             subp=p;
-            subpaths.samplefolder = [finalSampleFolderList{iFolder} filesep ]; 
+            subpaths.samplefolder = [mainPath filesep finalSampleFolderList{iFolder} filesep ]; 
             subpaths.registration = [subpaths.samplefolder paths.registration ];
             subpaths.metadata = [mainPath filesep paths.metadata filesep];
             subpaths.dearray = [subpaths.samplefolder paths.dearray filesep];
             subpaths.probabilitymaps= [subpaths.samplefolder paths.probabilitymaps filesep];
-            subpaths.segmentation = [subpaths.samplefolder paths.segmentation filesep];
-            subpaths.analysis = [subpaths.samplefolder paths.analysis filesep];
+            subpaths.segmentation = [fileparts(mainPath) filesep 'Train_segmentation' filesep finalSampleFolderList{iFolder} filesep];
+            
+            subpaths.analysis = [fileparts(mainPath) filesep 'Train_analysis' filesep finalSampleFolderList{iFolder} filesep];
+            subp.channelNames= channelNames;
             subpaths.fileExt = FileExt;
             subp.paths = subpaths;
             disp (['Processing ' listing(iFile).name ' in folder ' subpaths.samplefolder])

@@ -4,18 +4,22 @@ ip.addParamValue('MedianIntensity','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('Docker','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('crop',[],@(x)(numel(x) == 4 & all(x > 0 )));  
 ip.addParamValue('chanRange',[0],@(x)(numel(x) >0 & all(x > -1 )));
+ip.addParamValue('channelNames',[]);
 ip.parse(varargin{:});          
 p = ip.Results; 
 
-
-listing = dir([paths.metadata filesep '*channel_metadata*']);
-if isempty(listing)
-    disp('No metadata file found!')
-    return
-else
-%     [~,~,channelNames] = xlsread([listing(1).folder filesep listing(1).name]);
-      M = readtable([listing(1).folder filesep listing(1).name]);
-      channelNames = [M.Properties.VariableNames;table2cell(M)];
+if isempty(p.channelNames)
+    listing = dir([paths.metadata filesep '*channel_metadata*']);
+    if isempty(listing)
+        disp('No metadata file found!')
+        return
+    else
+    %     [~,~,channelNames] = xlsread([listing(1).folder filesep listing(1).name]);
+          M = readtable([listing(1).folder filesep listing(1).name]);
+          channelNames = [M.Properties.VariableNames;table2cell(M)];
+    end
+else 
+    channelNames = p.channelNames;
 end
 
 metadata =bfGetReader([paths.registration fileName]);
