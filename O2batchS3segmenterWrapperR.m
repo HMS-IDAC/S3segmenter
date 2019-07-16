@@ -57,7 +57,7 @@ if isequal(p.crop,'dearray')
     searchPath = ['dearray'];
     
 else
-    FileExt = 'tif';
+    FileExt = 'ome.tif';
     searchPath = ['registration'];
 end
 
@@ -68,7 +68,7 @@ end
     for iFolder = 1:length(sampleFolderList)
         fName = [sampleFolderList(iFolder).folder filesep sampleFolderList(iFolder).name];
         if isfolder(sampleFolderList(iFolder).folder) && ~isequal(sampleFolderList(iFolder).name,'..') ...
-            && ~isequal(sampleFolderList(iFolder).name,'.') && ~contains(sampleFolderList(iFolder).name,'TMA_MAP') && contains(sampleFolderList(iFolder).name,'.tif')
+            && ~isequal(sampleFolderList(iFolder).name,'.') && ~contains(sampleFolderList(iFolder).name,'TMA_MAP') && contains(sampleFolderList(iFolder).name,'.ome.tif')
             finalSampleFolderList{end+1} = fileparts(sampleFolderList(iFolder).folder);
             finalSampleFileList{end+1} = sampleFolderList(iFolder).name;
         end
@@ -83,7 +83,7 @@ end
         fileNumEnd = p.fileNum;
     end
 
-    for iFile = fileNumStart:fileNumEnd
+    for iFile = 4:4%fileNumStart:fileNumEnd
         tic
         subpaths =paths;
         subp=p;

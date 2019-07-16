@@ -88,10 +88,10 @@ end
     M = readtable([metadataListing(1).folder filesep metadataListing(1).name]);
     channelNames = [M.Properties.VariableNames;table2cell(M)];
 %% analysis    
-    for iFolder = 3:3%folderNumStart:folderNumEnd
+    for iFolder = folderNumStart:folderNumEnd
         
         listing = dir([mainPath filesep finalSampleFolderList{iFolder} filesep '*.tif']);
-        parfor iFile = 1: numel(listing)
+        for iFile = 1: numel(listing)
             tic
             subpaths =paths;
             subp=p;

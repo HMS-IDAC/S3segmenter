@@ -169,6 +169,10 @@ else
     tissueCrop = sum(tissue,3);
     tissue_gauss = imgaussfilt3(imresize(tissueCrop,0.5),1);
     TMAmask=imresize(tissue_gauss>thresholdMinimumError(tissue_gauss,'model','poisson'),size(tissueCrop));
+    if sum(sum(TMAmask)) ==0
+        return
+    end
+    
     
     if p.RefineTissueMask >0
         dsfactor =0.02;
@@ -203,8 +207,12 @@ clear tissue_gauss, clear maxTissue, clear tissueCrop, clear tissue, clear distM
            largestNucleiArea=100000;
        end
    end
-  disp(['Segmented Nuclei'])  
-%             tissue = S3tileReturn(tissue);
+   
+   if sum(sum(nucleiMask))==0
+       return
+   else       
+    disp(['Segmented Nuclei'])  
+   end
 
 clear nucleiPM
 clear nuclei
@@ -277,7 +285,7 @@ clear nuclei
             end
         end
         S3MeasureFeatures(cat(3,nucleiMaskTemp,cytoplasmMask),p.paths,fileName,'MedianIntensity',p.MedianIntensity,...
-            'Docker',p.Docker,'crop',rect,'chanRange',p.chanRange,'channelNames',[]);
+            'Docker',p.Docker,'crop',rect,'chanRange',p.chanRange,'channelNames',p.channelNames);
         disp(['Measured all features'])
     end
     
