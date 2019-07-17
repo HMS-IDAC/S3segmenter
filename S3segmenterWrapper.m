@@ -146,8 +146,10 @@ outputPath = [outputPath name];
 
 
 %% mask the core/tissue
+if isempty(p.TissueMaskChan)
+    p.TissueMaskChan = [1 p.CytoMaskChan];
+end
 
-    
 if isequal(p.crop,'dearray')
     if exist([p.paths.dearray 'masks' filesep filePrefix '_mask.tif'])
         TMAmask = imread([p.paths.dearray 'masks' filesep filePrefix '_mask.tif'])>0;

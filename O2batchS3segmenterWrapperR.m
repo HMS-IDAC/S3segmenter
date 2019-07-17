@@ -7,7 +7,7 @@ ip.addParamValue('fileNum',1,@(x)(numel(x) > 0 & all(x > 0 )));
 ip.addParamValue('ClassProbSource','unet',@(x)(ismember(x,{'RF','unet','none'})));
 ip.addParamValue('NucMaskChan',[2],@(x)(numel(x) > 0 & all(x > 0 )));  % deprecated. Channel number implied from prob map filename
 ip.addParamValue('CytoMaskChan',[2],@(x)(numel(x) > 0 & all(x > 0 )));  
-ip.addParamValue('TissueMaskChan',[3],@(x)(numel(x) > 0 & all(x > 0 ))); 
+ip.addParamValue('TissueMaskChan',[],@(x)(isnumeric(x))); 
 ip.addParamValue('RefineTissueMask',[0],@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('mask','tissue',@(x)(ismember(x,{'TMA','tissue','none'}))); % set to true if sample is TMA cores
 ip.addParamValue('crop','noCrop',@(x)(ismember(x,{'interactiveCrop','autoCrop','dearray','noCrop'})));
