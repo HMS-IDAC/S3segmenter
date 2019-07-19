@@ -1,4 +1,7 @@
-function S3MeasureFeatures(regions,paths,fileName,varargin)   
+function[cellID, meanIntRegionTable, medianIntRegionTable,meanStdTable,meanEntTable, haralickTable,majorAxisTable, minorAxisTable, ...
+    eccTable,solidityTable,areaTable, meanLawTable,centroidCellTable,headMeanInt, headMedianInt,headStd, headEnt,headHaralick,headLaw,headShape]= ...
+    S3MeasureFeatures(regions,paths,fileName,varargin)   
+
 ip = inputParser;
 ip.addParamValue('MedianIntensity','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('Docker','false',@(x)(ismember(x,{'true','false'})));
@@ -39,10 +42,4 @@ name=extractBefore(fileName,'.');
                        S3measureIntShapeTextureFeatures([paths.registration fileName] ,regions,channelNames,[p.chanRange(1) p.chanRange(2)],...
                        'MedianIntensity',p.MedianIntensity,'crop',p.crop);
                    
-if ~isempty(meanIntRegionTable)
-     writetable(array2table([cellID, meanIntRegionTable, medianIntRegionTable,areaTable,centroidCellTable, majorAxisTable, minorAxisTable, eccTable, ...
-   solidityTable, meanStdTable,meanEntTable,haralickTable,meanLawTable],...
-   'VariableNames',lower(regexprep(['cellid',headMeanInt,headMedianInt,headShape,headStd, headEnt,headHaralick,headLaw], '[()/\-\s+]', ''))),...
-                [paths.analysis filesep name '_Features.txt'],'Delimiter','\t')
-end
      

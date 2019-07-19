@@ -285,8 +285,19 @@ clear nuclei
                 mainFile{end+1} = fName;
             end
         end
+        [cellID, meanIntRegionTable, medianIntRegionTable,meanStdTable,meanEntTable, haralickTable,majorAxisTable, minorAxisTable, ...
+                    eccTable,solidityTable,areaTable, meanLawTable,centroidCellTable,headMeanInt, headMedianInt,headStd, headEnt,headHaralick,headLaw,headShape]=...
         S3MeasureFeatures(cat(3,nucleiMaskTemp,cytoplasmMask),p.paths,fileName,'MedianIntensity',p.MedianIntensity,...
-            'Docker',p.Docker,'crop',rect,'chanRange',p.chanRange,'channelNames',p.channelNames);
+                    'Docker',p.Docker,'crop',rect,'chanRange',p.chanRange,'channelNames',p.channelNames);
+        
+        if ~isempty(meanIntRegionTable)
+                 writetable(array2table([cellID, meanIntRegionTable, medianIntRegionTable,areaTable,centroidCellTable, majorAxisTable, minorAxisTable, eccTable, ...
+               solidityTable, meanStdTable,meanEntTable,haralickTable,meanLawTable],...
+               'VariableNames',lower(regexprep(['cellid',headMeanInt,headMedianInt,headShape,headStd, headEnt,headHaralick,headLaw], '[()/\-\s+]', ''))),...
+                            [p.paths.analysis filesep name '_Features.txt'],'Delimiter','\t')
+        end
+        
+        
         disp(['Measured all features'])
     end
     
