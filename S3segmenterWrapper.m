@@ -169,7 +169,7 @@ else
         end
     end
     tissueCrop = sum(tissue,3);
-    tissue_gauss = imgaussfilt3(imresize(tissueCrop,0.5),1);
+    tissue_gauss = imgaussfilt3(tissueCrop,1);
     TMAmask=imresize(tissue_gauss>thresholdMinimumError(tissue_gauss,'model','poisson'),size(tissueCrop));
     if sum(sum(TMAmask)) ==0
         return

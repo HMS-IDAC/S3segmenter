@@ -131,7 +131,7 @@ switch p.nucleiRegion
     idx = find([statsFilt.MeanIntensity]>MITh );
     allNuclei = bwlabel(ismember(allNuclei,idx));
     stats=regionprops(allNuclei,'Area');
-    idx = find( [stats.Area]>(nucleiDiameter(1)^2)*3/4 & [stats.Area] < (nucleiDiameter(2)^2));
+    idx = find( [stats.Area]>(nucleiDiameter(1)^2)*3/4 & [stats.Area] < (nucleiDiameter(2)^2)*3/4);
    end
 
    nucleiMask = ismember(allNuclei,idx);

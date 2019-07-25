@@ -83,7 +83,7 @@ end
         fileNumEnd = p.fileNum;
     end
 
-    for iFile = 4:4%fileNumStart:fileNumEnd
+    for iFile = fileNumStart:fileNumEnd
         tic
         subpaths =paths;
         subp=p;
