@@ -32,7 +32,7 @@ else
 end
 filePrefix = fileName(1:strfind(fileName,'.')-1);
 paths=regexp(p.paths.samplefolder,filesep,'split');
-sampleName = paths{end-1};
+sampleName = filePrefix;%paths{end-1};
 rawFileListing = dir([p.paths.registration sampleName '*.' p.paths.fileExt]);
 metadata =bfGetReader([imagePath rawFileListing(1).name]);            
 numChan =metadata.getImageCount;

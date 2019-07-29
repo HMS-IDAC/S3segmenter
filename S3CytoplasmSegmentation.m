@@ -63,7 +63,7 @@ end
 %% filter based on a nuclei
           stats=regionprops(tissueCellMask,nucleiMask>0,'MaxIntensity','Area');
           clear cyto, clear mask
-          idx = find([stats.MaxIntensity] > 0 & [stats.Area]>5);
+          idx = find([stats.MaxIntensity] > 0 & [stats.Area]>5  & [stats.Area]<prctile(cat(1,stats.Area),99.9));
           finalCellMask = bwlabel(ismember(tissueCellMask,idx));
           clear tissueCellMask
           nucleiMask = cast(nucleiMask>0,class(finalCellMask)).*finalCellMask; 

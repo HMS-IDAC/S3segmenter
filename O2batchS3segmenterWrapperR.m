@@ -47,7 +47,7 @@ end
 
 paths.metadata = ['metadata' ];
 paths.dearray = ['dearray' ];
-paths.probabilitymaps= ['prob_maps3Class'];
+paths.probabilitymaps= ['probmapsUNet'];
 paths.segmentation = ['segmentation3Class'];
 paths.analysis = ['analysis'];
 paths.registration = ['registration'];
@@ -76,7 +76,7 @@ end
     disp (['Found ' num2str(length(finalSampleFolderList)) ' samples(s)!'])
     
     if isequal(p.HPC,'false')
-        fileNumStart = 1;
+        fileNumStart = 4;
         fileNumEnd = length(finalSampleFolderList);
     else 
         fileNumStart=p.fileNum;
