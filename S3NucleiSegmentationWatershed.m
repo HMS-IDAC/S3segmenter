@@ -69,7 +69,7 @@ end
 %         numLoGScales = ceil((nucleiDiameter(2)-nucleiDiameter(1))/3);
 %         logmask = (nucleiImageResized>thresholdMinimumError(nucleiImageResized,'model','poisson'));
         logmask = nucleiCentersResized>200;
-        [logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(nucleiCentersResized,logmask,'globalThreshold',nucleiDiameter(2));
+        [logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(255-nucleiContoursResized,logmask,'globalThreshold',nucleiDiameter(2));
      end
 %      imshowpair(centers,nucleiCentersResized)
         
@@ -124,8 +124,8 @@ switch p.nucleiRegion
         statsFilt=regionprops(allNuclei,nucleiCentersResized,'MeanIntensity');
         MITh = thresholdMinimumError(cat(1,statsFilt.MeanIntensity),'model','poisson');
     else
-        statsFilt=regionprops(allNuclei,nucleiImageResized,'MaxIntensity');
-        MITh =thresholdOtsu(nucleiBlur);
+        statsFilt=regionprops(allNuclei,nucleiImageResized,'MeanIntensity');
+        MITh =0;
     end
 
     idx = find([statsFilt.MeanIntensity]>MITh );

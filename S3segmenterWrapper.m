@@ -32,7 +32,7 @@ else
 end
 filePrefix = fileName(1:strfind(fileName,'.')-1);
 paths=regexp(p.paths.samplefolder,filesep,'split');
-sampleName = filePrefix;%paths{end-1};
+sampleName =paths{end-1};
 rawFileListing = dir([p.paths.registration sampleName '*.' p.paths.fileExt]);
 metadata =bfGetReader([imagePath rawFileListing(1).name]);            
 numChan =metadata.getImageCount;
@@ -88,8 +88,7 @@ outputPath = [outputPath name];
         
     end 
     
-    nucleiCrop = imread([imagePath rawFileListing(1).name],nucMaskChan);
-    fullResSize = size(nucleiCrop);
+
     
     
     %% read nuclei channel and crop as necessary
@@ -98,6 +97,8 @@ outputPath = [outputPath name];
             
             switch p.crop
                 case 'interactiveCrop'
+                 nucleiCrop = imread([imagePath rawFileListing(1).name],nucMaskChan);
+                 fullResSize = size(nucleiCrop);
                  [~,rect] = imcrop(nucleiCrop);
                  rect = [round(rect(1)) round(rect(2)) round(rect(3)) round(rect(4))];
                  PMrect= rect; 
@@ -114,10 +115,10 @@ outputPath = [outputPath name];
                         load([p.paths.dearray filesep name '_cropCoords.mat'])
                         rect = [rect(1) rect(2) rect(3)-rect(1)-1 rect(4)-rect(2)-1];
                         PMrect =  [1 1 rect(3) rect(4)];
-                        if (rect(3)+rect(1)) > fullResSize(2) || (rect(4)+rect(2)) > fullResSize(1)
-                            rect = [1 1 fullResSize(2)-1 fullResSize(1)-1];
-                            PMrect= rect;
-                        end
+%                         if (rect(3)+rect(1)) > fullResSize(2) || (rect(4)+rect(2)) > fullResSize(1)
+%                             rect = [1 1 fullResSize(2)-1 fullResSize(1)-1];
+%                             PMrect= rect;
+%                         end
                     else
                         rect = [1 1 rawSize(2)-1 rawSize(1)-1];
                         PMrect= rect;
@@ -125,6 +126,8 @@ outputPath = [outputPath name];
                     nucleiCrop = imread([imagePath rawFileListing(1).name],nucMaskChan,'PixelRegion',{[rect(2) rect(2)+rect(4)], [rect(1) rect(1)+rect(3)]});
                     fullResSize = size(nucleiCrop);
                 case 'noCrop'
+                 nucleiCrop = imread([imagePath rawFileListing(1).name],nucMaskChan);
+                 fullResSize = size(nucleiCrop);
                  nucleiCrop = imresize(nucleiCrop,p.resizeFactor);
                  rect = round([1 1 size(nucleiCrop,2) size(nucleiCrop,1)]);
                  PMrect= rect;
@@ -147,7 +150,7 @@ outputPath = [outputPath name];
 
 %% mask the core/tissue
 if isempty(p.TissueMaskChan)
-    p.TissueMaskChan = [1 p.CytoMaskChan];
+    p.TissueMaskChan = [nucMaskChan p.CytoMaskChan];
 end
 
 if isequal(p.crop,'dearray')

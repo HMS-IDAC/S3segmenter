@@ -47,7 +47,7 @@ end
 
 paths.metadata = ['metadata' ];
 paths.dearray = ['dearray' ];
-paths.probabilitymaps= ['probmapsUNet'];
+paths.probabilitymaps= ['prob_maps3Class'];
 paths.segmentation = ['segmentation3Class'];
 paths.analysis = ['analysis'];
 paths.registration = ['registration'];
@@ -55,7 +55,6 @@ paths.registration = ['registration'];
 if isequal(p.crop,'dearray')
     FileExt = 'tif';
     searchPath = ['dearray'];
-    
 else
     FileExt = 'ome.tif';
     searchPath = ['registration'];
@@ -68,7 +67,7 @@ end
     for iFolder = 1:length(sampleFolderList)
         fName = [sampleFolderList(iFolder).folder filesep sampleFolderList(iFolder).name];
         if isfolder(sampleFolderList(iFolder).folder) && ~isequal(sampleFolderList(iFolder).name,'..') ...
-            && ~isequal(sampleFolderList(iFolder).name,'.') && ~contains(sampleFolderList(iFolder).name,'TMA_MAP') && contains(sampleFolderList(iFolder).name,'.ome.tif')
+            && ~isequal(sampleFolderList(iFolder).name,'.') && ~contains(sampleFolderList(iFolder).name,'TMA_MAP') && contains(sampleFolderList(iFolder).name,FileExt)
             finalSampleFolderList{end+1} = fileparts(sampleFolderList(iFolder).folder);
             finalSampleFileList{end+1} = sampleFolderList(iFolder).name;
         end
@@ -76,7 +75,7 @@ end
     disp (['Found ' num2str(length(finalSampleFolderList)) ' samples(s)!'])
     
     if isequal(p.HPC,'false')
-        fileNumStart = 4;
+        fileNumStart = 1;
         fileNumEnd = length(finalSampleFolderList);
     else 
         fileNumStart=p.fileNum;
