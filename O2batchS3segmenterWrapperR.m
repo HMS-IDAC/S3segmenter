@@ -47,8 +47,8 @@ end
 
 paths.metadata = ['metadata' ];
 paths.dearray = ['dearray' ];
-paths.probabilitymaps= ['prob_maps3Class'];
-paths.segmentation = ['segmentation3Class'];
+paths.probabilitymaps= ['prob_maps'];
+paths.segmentation = ['segmentation'];
 paths.analysis = ['analysis'];
 paths.registration = ['registration'];
 
