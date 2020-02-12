@@ -68,12 +68,14 @@ end
         end
 %         numLoGScales = ceil((nucleiDiameter(2)-nucleiDiameter(1))/3);
 %         logmask = (nucleiImageResized>thresholdMinimumError(nucleiImageResized,'model','poisson'));
-        logmask = nucleiCentersResized>200;
-        [logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(255-nucleiContoursResized,logmask,'globalThreshold',nucleiDiameter(2));
+        logmask = nucleiCentersResized>150;
+        [logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(255-nucleiContoursResized,logmask,'globalThreshold',nucleiDiameter(2),nucleiImageResized);
      end
-%      imshowpair(centers,nucleiCentersResized)
-        
-    
+%      figure,imshowpair(logfgm,nucleiCentersResized)
+%         logfgm=logfgm.*p.mask;
+%         masktest=(nucleiCentersResized+nucleiContoursResized)>thresholdOtsu(nucleiCentersResized+nucleiContoursResized);
+%         bg=(1-masktest).*p.mask;
+%         bg = imerode(bg,strel('disk',3));
 %% apply watershed transform
 switch p.nucleiRegion 
     case 'watershedContourInt'
@@ -115,7 +117,7 @@ switch p.nucleiRegion
 %     nucleiTissueMask = bwlabel(ismember(allNuclei,idx));   
       
     if isequal(p.nucleiFilter,'LoG')
-        statsFilt=regionprops(logfgm.*allNuclei,(double(nucleiCentersResized))/255.*double(nucleiImageResized),'MaxIntensity');
+        statsFilt=regionprops(allNuclei,(double(nucleiCentersResized))/255.*double(nucleiImageResized),'MaxIntensity');
         MITh = median(cat(1,statsFilt.MaxIntensity))+0.5*mad(cat(1,statsFilt.MaxIntensity));
     elseif isequal(p.nucleiFilter,'Int')    
         statsFilt=regionprops(logfgm.*allNuclei,nucleiImageResized,'MeanIntensity');

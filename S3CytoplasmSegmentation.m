@@ -5,6 +5,7 @@ ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'RF','distanc
 ip.addParamValue('useGPUArray','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('nucleiPriority','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('resize',1,@(x)(numel(x) == 1 & all(x > 0 )));  
+ip.addParamValue('cytoDilation',5,@(x)(numel(x) == 1 & all(x > 0 ))); 
 ip.addParamValue('sizeFilter',1,@(x)(numel(x) == 1 & all(x > 0 ))); 
 ip.addParamValue('upSample',2,@(x)(numel(x) == 1 & all(x > 0 )));  
 ip.addParamValue('mask', [], @(x) isnumeric(x) || islogical(x));
@@ -49,7 +50,7 @@ end
                 contours = normalize(steerableDetector(im2double(cyto),2,1.5));
 
             case 'ring'
-                cellMask = bwlabel(bwmorph(nucleiMask>0,'thicken',9));
+                cellMask = bwlabel(bwmorph(nucleiMask>0,'thicken',p.cytoDilation));
                 mask = ones(size(cellMask));
         end
 

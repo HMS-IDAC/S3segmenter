@@ -173,7 +173,9 @@ else
     end
     tissueCrop = sum(tissue,3);
     tissue_gauss = imgaussfilt3(tissueCrop,1);
-    TMAmask=imresize(tissue_gauss>thresholdMinimumError(tissue_gauss,'model','poisson'),size(tissueCrop));
+    tissue_gauss1=tissue_gauss;
+    tissue_gauss1(tissue_gauss>prctile(tissue_gauss,99))=NaN; %remove outlier contributions to automatic threshold calculation
+    TMAmask=imresize(tissue_gauss>thresholdMinimumError(tissue_gauss1,'model','poisson'),size(tissueCrop));
     if sum(sum(TMAmask)) ==0
         return
     end
@@ -214,6 +216,7 @@ clear tissue_gauss, clear maxTissue, clear tissueCrop, clear tissue, clear distM
    end
 
    if sum(sum(nucleiMask))==0
+       disp(['No nuclei found. Consider increasing nuclei size range or choose a different tissue mask channel'])  
        return
    else       
     disp(['Segmented Nuclei'])  
@@ -229,6 +232,8 @@ clear nuclei
             for iChan = p.CytoMaskChan
                 if isequal(p.crop,'noCrop')
                    cyto= cat(3,cyto,normI(imresize(double(imread([imagePath rawFileListing(1).name],iChan)),p.resizeFactor)));
+                elseif isequal(p.crop,'dearray')
+                    cyto= cat(3,cyto,normI(imresize(double(imread([p.paths.dearray filesep fileName],iChan)),p.resizeFactor)));
                 else
                     cyto= cat(3,cyto,normI(double(imread([imagePath rawFileListing(1).name],iChan,'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}))));
                 end
@@ -246,13 +251,13 @@ clear nuclei
 %             cyto=S3tileReturn(cyto);
 %             tissue = S3tileReturn(tissue);
             [cytoplasmMask,nucleiMaskTemp,cellMask]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
-                'cytoMethod',p.cytoMethod,'resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample);
+                'cytoMethod',p.cytoMethod,'resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation);
             exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,'nuclei',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMask,cyto,outputPath,'cyto',p.saveFig,p.saveMasks)
             exportMasks(cellMask,cyto,outputPath,'cell',p.saveFig,p.saveMasks)
             
             [cytoplasmMaskRing,nucleiMaskRing,cellMaskRing]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
-                'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample);
+                'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation);
             exportMasks(nucleiMaskRing,nucleiCrop,outputPath,'nucleiRing',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMaskRing,cyto,outputPath,'cytoRing',p.saveFig,p.saveMasks)
             exportMasks(cellMaskRing,cyto,outputPath,'cellRing',p.saveFig,p.saveMasks)

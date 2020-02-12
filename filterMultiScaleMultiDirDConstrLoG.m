@@ -1,4 +1,4 @@
-function [imMultiscaleLoGResponse,centers] = filterMultiScaleMultiDirDConstrLoG(image,mask,seedMethod,downSample)
+function [imMultiscaleLoGResponse,centers] = filterMultiScaleMultiDirDConstrLoG(image,mask,seedMethod,downSample,raw)
 
 
 switch seedMethod
