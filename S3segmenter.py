@@ -139,7 +139,10 @@ def S3CytoplasmSegmentation(nucleiMask,cyto,mask,cytoMethod='distanceTransform',
 #    imshow(cytoplasmMask)
     return cytoplasmMask,nucleiMask,cellMask
     
-def exportMasks(mask,image,outputPath,fileName,saveFig=True,saveMasks = True):
+def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks = True):
+    outputPath =outputPath + os.path.sep + filePrefix
+    if not os.path.exists(outputPath):
+        os.makedirs(outputPath)
     if saveMasks ==True:
         kwargs={}
         kwargs['bigtiff'] = True
@@ -167,6 +170,7 @@ if __name__ == '__main__':
     parser.add_argument("--classProbPath")
     parser.add_argument("--outputPath")
     parser.add_argument("--dearrayPath")
+    parser.add_argument("--maskPath")
     parser.add_argument("--mask",choices=['TMA', 'tissue','none'],default = 'tissue')
     parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray'], default = 'noCrop')
     parser.add_argument("--cytoMethod",choices=['distanceTransform','bwdistanceTransform','ring'],default = 'distanceTransform')
@@ -190,6 +194,7 @@ if __name__ == '__main__':
     outputPath = args.outputPath
     dearrayPath = args.dearrayPath
     classProbPath = args.classProbPath
+    maskPath = args.maskPath
        
     fileName = os.path.basename(imagePath)
     filePrefix = fileName[0:fileName.index('.')]
@@ -232,7 +237,8 @@ if __name__ == '__main__':
         
     # mask the core/tissue
     if args.crop == 'dearray':
-        TMAmask = tifffile.imread(dearrayPath + os.path.sep + 'masks' + os.path.sep + filePrefix + '_mask.tif')
+#        TMAmask = tifffile.imread(dearrayPath + os.path.sep + 'masks' + os.path.sep + filePrefix + '_mask.tif')
+        TMAmask = tifffile.imread(maskPath + os.path.sep + filePrefix + '_mask.tif')
     else:
         tissue = np.empty((len(args.TissueMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.int16)
         count=0
@@ -271,14 +277,14 @@ if __name__ == '__main__':
                 count+=1
         cyto = np.amax(cyto,axis=0)
         cytoplasmMask,nucleiMaskTemp,cellMask = S3CytoplasmSegmentation(nucleiMask,cyto,TMAmask,args.cytoMethod,args.cytoDilation)
-        exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,'nuclei',args.saveFig,args.saveMask)
-        exportMasks(cytoplasmMask,cyto,outputPath,'cyto',args.saveFig,args.saveMask)
-        exportMasks(cellMask,cyto,outputPath,'cell',args.saveFig,args.saveMask)
+        exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,filePrefix,'nuclei',args.saveFig,args.saveMask)
+        exportMasks(cytoplasmMask,cyto,outputPath,filePrefix,'cyto',args.saveFig,args.saveMask)
+        exportMasks(cellMask,cyto,outputPath,filePrefix,'cell',args.saveFig,args.saveMask)
         
         cytoplasmMask,nucleiMaskTemp,cellMask = S3CytoplasmSegmentation(nucleiMask,cyto,TMAmask,'ring',args.cytoDilation)
-        exportMasks(nucleiMask,nucleiCrop,outputPath,'nucleiRing',args.saveFig,args.saveMask)
-        exportMasks(cytoplasmMask,cyto,outputPath,'cytoRing',args.saveFig,args.saveMask)
-        exportMasks(cellMask,cyto,outputPath,'cellRing',args.saveFig,args.saveMask)
+        exportMasks(nucleiMask,nucleiCrop,outputPath,filePrefix,'nucleiRing',args.saveFig,args.saveMask)
+        exportMasks(cytoplasmMask,cyto,outputPath,filePrefix,'cytoRing',args.saveFig,args.saveMask)
+        exportMasks(cellMask,cyto,outputPath,filePrefix,'cellRing',args.saveFig,args.saveMask)
         
     elif args.segmentCytoplasm == 'ignoreCytoplasm':
         exportMasks(nucleiMask,nucleiCrop,outputPath,'nuclei')
@@ -286,5 +292,7 @@ if __name__ == '__main__':
         exportMasks(nucleiMask,nucleiCrop,outputPath,'cell')
         cytoplasmMask = nucleiMask
         
-        
+        #fix nucMaskChan channel grabber
+        #fix bwdistance watershed
+   
                 
