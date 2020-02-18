@@ -24,6 +24,7 @@ import fnmatch
 import cv2
 import sys
 import argparse
+import re
 
 
 def imshowpair(A,B):
@@ -171,25 +172,27 @@ if __name__ == '__main__':
     parser.add_argument("--outputPath")
     parser.add_argument("--dearrayPath")
     parser.add_argument("--maskPath")
+    parser.add_argument("--probMapChan",type = int, default = -1)
     parser.add_argument("--mask",choices=['TMA', 'tissue','none'],default = 'tissue')
-    parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray'], default = 'noCrop')
+    parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray'], default = 'dearray')
     parser.add_argument("--cytoMethod",choices=['distanceTransform','bwdistanceTransform','ring'],default = 'distanceTransform')
     parser.add_argument("--nucleiFilter",choices=['IntPM','LoG','Int','none'],default = 'IntPM')
     parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation'], default = 'watershedContourInt')
     parser.add_argument("--segmentCytoplasm",choices = ['segmentCytoplasm','ignoreCytoplasm'],default = 'segmentCytoplasm')
-    parser.add_argument("--cytoDilation",type = int, default = [5])
+    parser.add_argument("--cytoDilation",type = int, default = 5)
     parser.add_argument("--logSigma",type = int, default = [3, 60])
-    parser.add_argument("--CytoMaskChan",type=int, default=[48])
-    parser.add_argument("--TissueMaskChan",type=int, default=[1,48])
+    parser.add_argument("--CytoMaskChan",type=int, default=[2])
+    parser.add_argument("--TissueMaskChan",type=int, default=[1,2])
     parser.add_argument("--saveMask",action='store_false')
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
     # gather filename information
-#    imagePath = 'D:/LSP/cycif/testsets/PTCL/dearray/1.tif'
-#    dearrayPath = 'D:/LSP/cycif/testsets/PTCL/dearray'
-#    outputPath = 'D:/LSP/cycif/testsets/PTCL/segmentation'
-#    classProbPath = 'D:/LSP/cycif/testsets/PTCL/prob_maps'
+#    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/A1.tif'
+#    dearrayPath = 'D:/LSP/cycif/testsets/exemplar-002/dearray'
+#    outputPath = 'D:/LSP/cycif/testsets/exemplar-002/segmentation'
+#    classProbPath = 'D:/LSP/cycif/testsets/exemplar-002/prob_maps'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/masks'
     imagePath = args.imagePath
     outputPath = args.outputPath
     dearrayPath = args.dearrayPath
@@ -204,9 +207,14 @@ if __name__ == '__main__':
     for iFile in os.listdir(classProbPath):
         if fnmatch.fnmatch(iFile,filePrefix + '_Contours*'):
             listing.append(iFile)
-    PMfileName = [''.join(listing)]
+    PMfileName = ([''.join(listing)])
+    
     #probMapSuffix = [PMfileName[PMfileName.index('_ContoursPM_'):]]
-    nucMaskChan = 0#PMfileName[PMfileName.index('_ContoursPM_'):]
+    if args.probMapChan==-1:
+        test = str(PMfileName)
+        nucMaskChan = int(test.split('_')[2].split('.')[0])
+    else:
+        nucMaskChan = args.probMapChan
     
     nucleiPMListing = []
     for iFile in os.listdir(classProbPath):
@@ -230,10 +238,10 @@ if __name__ == '__main__':
         PMrect= rect
         
     nucleiProbMaps = tifffile.imread(classProbPath + os.path.sep + PMfileName[0],key=0)
-    nucleiPM = nucleiProbMaps[int(PMrect[1]):int(PMrect[1]+PMrect[3]), int(PMrect[0]):int(PMrect[0]+PMrect[2])]
+    nucleiPM = nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
     nucleiProbMaps = tifffile.imread(classProbPath + os.path.sep + PMfileName[1],key=0)
     PMSize = nucleiProbMaps.shape
-    nucleiPM = np.dstack((nucleiPM,nucleiProbMaps[int(PMrect[1]):int(PMrect[1]+PMrect[3]), int(PMrect[0]):int(PMrect[0]+PMrect[2])]))
+    nucleiPM = np.dstack((nucleiPM,nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]))
         
     # mask the core/tissue
     if args.crop == 'dearray':
@@ -249,7 +257,7 @@ if __name__ == '__main__':
         else:
             for iChan in args.TissueMaskChan:
                 tissue = np.dstack(tissue,normI(tifffile.imread(imagePath,key=iChan)))
-        tissueCrop = np.sum(tissue,axis = 2)
+        tissueCrop = np.sum(tissue,axis = 0)
         tissue_gauss = gaussian_filter(tissueCrop,1)
         tissue_gauss1 = tissue_gauss
         tissue_gauss1[tissue_gauss>np.percentile(tissue_gauss,99)]=np.nan
@@ -273,7 +281,7 @@ if __name__ == '__main__':
             cyto=np.empty((len(args.CytoMaskChan),rect[3],rect[2]),dtype=np.int16)
             for iChan in args.CytoMaskChan:
                 cytoFull= tifffile.imread(imagePath, key=iChan)
-                cyto[count,:,:] = cytoFull[int(rect[1]):int(rect[1]+rect[3]), int(rect[0]):int(rect[0]+rect[2])]
+                cyto[count,:,:] = cytoFull[int(rect[0]):int(rect[0]+rect[2]), int(rect[1]):int(rect[1]+rect[3])]
                 count+=1
         cyto = np.amax(cyto,axis=0)
         cytoplasmMask,nucleiMaskTemp,cellMask = S3CytoplasmSegmentation(nucleiMask,cyto,TMAmask,args.cytoMethod,args.cytoDilation)
@@ -292,7 +300,6 @@ if __name__ == '__main__':
         exportMasks(nucleiMask,nucleiCrop,outputPath,'cell')
         cytoplasmMask = nucleiMask
         
-        #fix nucMaskChan channel grabber
         #fix bwdistance watershed
    
                 
