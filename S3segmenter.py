@@ -168,7 +168,8 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument("--imagePath")
-    parser.add_argument("--classProbPath")
+    parser.add_argument("--nucleiClassProbPath")
+    parser.add_argument("--contoursClassProbPath")
     parser.add_argument("--outputPath")
     parser.add_argument("--dearrayPath")
     parser.add_argument("--maskPath")
@@ -189,40 +190,25 @@ if __name__ == '__main__':
     
     # gather filename information
 #    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/A1.tif'
-#    dearrayPath = 'D:/LSP/cycif/testsets/exemplar-002/dearray'
 #    outputPath = 'D:/LSP/cycif/testsets/exemplar-002/segmentation'
-#    classProbPath = 'D:/LSP/cycif/testsets/exemplar-002/prob_maps'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/masks'
+#    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-002/prob_maps/A1_NucleiPM_1.tif'
+#    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-002/prob_maps/A1_ContoursPM_1.tif'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/masks/A1_mask.tif'
     imagePath = args.imagePath
     outputPath = args.outputPath
-    dearrayPath = args.dearrayPath
-    classProbPath = args.classProbPath
+    nucleiClassProbPath = args.nucleiClassProbPath
+    contoursClassProbPath = args.contoursClassProbPath
     maskPath = args.maskPath
        
     fileName = os.path.basename(imagePath)
     filePrefix = fileName[0:fileName.index('.')]
-     
-    # read class probability maps
-    listing = []
-    for iFile in os.listdir(classProbPath):
-        if fnmatch.fnmatch(iFile,filePrefix + '_Contours*'):
-            listing.append(iFile)
-    PMfileName = ([''.join(listing)])
     
-    #probMapSuffix = [PMfileName[PMfileName.index('_ContoursPM_'):]]
+    # get channel used for nuclei segmentation
     if args.probMapChan==-1:
-        test = str(PMfileName)
+        test = os.path.basename(contoursClassProbPath)
         nucMaskChan = int(test.split('_')[2].split('.')[0])
     else:
         nucMaskChan = args.probMapChan
-    
-    nucleiPMListing = []
-    for iFile in os.listdir(classProbPath):
-        if fnmatch.fnmatch(iFile,filePrefix +'_NucleiPM*'):
-            nucleiPMListing.append(iFile)
-    PMfileName.append(''.join(nucleiPMListing))
-    #probMapSuffix.append(PMfileName[PMfileName.index('_NucleiPM_'):])
-    
     
     #crop images if needed
     if args.crop == 'interactiveCrop':
@@ -237,16 +223,16 @@ if __name__ == '__main__':
         rect = [0, 0, nucleiCrop.shape[0], nucleiCrop.shape[1]]
         PMrect= rect
         
-    nucleiProbMaps = tifffile.imread(classProbPath + os.path.sep + PMfileName[0],key=0)
+    nucleiProbMaps = tifffile.imread(nucleiClassProbPath,key=0)
     nucleiPM = nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
-    nucleiProbMaps = tifffile.imread(classProbPath + os.path.sep + PMfileName[1],key=0)
+    nucleiProbMaps = tifffile.imread(contoursClassProbPath,key=0)
     PMSize = nucleiProbMaps.shape
     nucleiPM = np.dstack((nucleiPM,nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]))
         
     # mask the core/tissue
     if args.crop == 'dearray':
 #        TMAmask = tifffile.imread(dearrayPath + os.path.sep + 'masks' + os.path.sep + filePrefix + '_mask.tif')
-        TMAmask = tifffile.imread(maskPath + os.path.sep + filePrefix + '_mask.tif')
+        TMAmask = tifffile.imread(maskPath)
     else:
         tissue = np.empty((len(args.TissueMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.int16)
         count=0
