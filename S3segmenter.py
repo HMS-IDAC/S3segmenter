@@ -52,10 +52,9 @@ def normI(I):
     return J
 
 def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFitler,nucleiRegion):
-    nucleiContours = nucleiPM[:,:,0]
-    nucleiCenters = nucleiPM[:,:,1]
+    nucleiContours = nucleiPM[:,:,1]
+    nucleiCenters = nucleiPM[:,:,0]
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
-    
     
     if len(logSigma)==1:
          nucleiDiameter  = [logSigma*0.5, logSigma*1.5]
@@ -168,32 +167,32 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument("--imagePath")
-    parser.add_argument("--nucleiClassProbPath")
     parser.add_argument("--contoursClassProbPath")
+    parser.add_argument("--nucleiClassProbPath")
     parser.add_argument("--outputPath")
     parser.add_argument("--dearrayPath")
     parser.add_argument("--maskPath")
     parser.add_argument("--probMapChan",type = int, default = -1)
     parser.add_argument("--mask",choices=['TMA', 'tissue','none'],default = 'tissue')
-    parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray'], default = 'dearray')
+    parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray'], default = 'noCrop')
     parser.add_argument("--cytoMethod",choices=['distanceTransform','bwdistanceTransform','ring'],default = 'distanceTransform')
     parser.add_argument("--nucleiFilter",choices=['IntPM','LoG','Int','none'],default = 'IntPM')
     parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation'], default = 'watershedContourInt')
     parser.add_argument("--segmentCytoplasm",choices = ['segmentCytoplasm','ignoreCytoplasm'],default = 'segmentCytoplasm')
     parser.add_argument("--cytoDilation",type = int, default = 5)
-    parser.add_argument("--logSigma",type = int, default = [3, 60])
-    parser.add_argument("--CytoMaskChan",type=int, default=[2])
-    parser.add_argument("--TissueMaskChan",type=int, default=[1,2])
+    parser.add_argument("--logSigma",type = int, nargs = '+', default = [3, 60])
+    parser.add_argument("--CytoMaskChan",type=int, nargs = '+', default=[2])
+    parser.add_argument("--TissueMaskChan",type=int, nargs = '+', default=[1])
     parser.add_argument("--saveMask",action='store_false')
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
     # gather filename information
-#    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/A1.tif'
-#    outputPath = 'D:/LSP/cycif/testsets/exemplar-002/segmentation'
-#    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-002/prob_maps/A1_NucleiPM_1.tif'
-#    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-002/prob_maps/A1_ContoursPM_1.tif'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/masks/A1_mask.tif'
+#    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001.ome.tif'
+#    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
+#    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_NucleiPM_1.tif'
+#    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_ContoursPM_1.tif'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -206,7 +205,8 @@ if __name__ == '__main__':
     # get channel used for nuclei segmentation
     if args.probMapChan==-1:
         test = os.path.basename(contoursClassProbPath)
-        nucMaskChan = int(test.split('_')[2].split('.')[0])
+        nucMaskChan = int(test.split('_')[2].split('.')[0])-1
+        
     else:
         nucMaskChan = args.probMapChan
     
@@ -231,10 +231,9 @@ if __name__ == '__main__':
         
     # mask the core/tissue
     if args.crop == 'dearray':
-#        TMAmask = tifffile.imread(dearrayPath + os.path.sep + 'masks' + os.path.sep + filePrefix + '_mask.tif')
         TMAmask = tifffile.imread(maskPath)
     else:
-        tissue = np.empty((len(args.TissueMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.int16)
+        tissue = np.empty((len(args.TissueMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.uint16)
         count=0
         if args.crop == 'noCrop':
             for iChan in args.TissueMaskChan:
@@ -245,9 +244,10 @@ if __name__ == '__main__':
                 tissue = np.dstack(tissue,normI(tifffile.imread(imagePath,key=iChan)))
         tissueCrop = np.sum(tissue,axis = 0)
         tissue_gauss = gaussian_filter(tissueCrop,1)
-        tissue_gauss1 = tissue_gauss
-        tissue_gauss1[tissue_gauss>np.percentile(tissue_gauss,99)]=np.nan
-        TMAmask = tissue_gauss>threshold_minimum(tissue_gauss1)
+        tissue_gauss1 = tissue_gauss.astype(float)
+#        tissue_gauss1[tissue_gauss>np.percentile(tissue_gauss,99)]=np.nan
+        TMAmask = np.log2(tissue_gauss+1)>threshold_otsu(np.log2(tissue_gauss+1))
+        #imshow(TMAmask)
         del tissue_gauss, tissueCrop, tissue, tissue_gauss1
     
     
@@ -281,9 +281,9 @@ if __name__ == '__main__':
         exportMasks(cellMask,cyto,outputPath,filePrefix,'cellRing',args.saveFig,args.saveMask)
         
     elif args.segmentCytoplasm == 'ignoreCytoplasm':
-        exportMasks(nucleiMask,nucleiCrop,outputPath,'nuclei')
+        exportMasks(nucleiMask,nucleiCrop,outputPath,filePrefix,'nuclei')
         cellMask = nucleiMask
-        exportMasks(nucleiMask,nucleiCrop,outputPath,'cell')
+        exportMasks(nucleiMask,nucleiCrop,outputPath,filePrefix,'cell')
         cytoplasmMask = nucleiMask
         
         #fix bwdistance watershed

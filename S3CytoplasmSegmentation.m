@@ -1,7 +1,7 @@
 function [cytoplasmMask,nucleiMask,finalCellMask] = S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,varargin)
 
 ip = inputParser;
-ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'RF','distanceTransform','bwdistanceTransform','ring'})));
+ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
 ip.addParamValue('useGPUArray','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('nucleiPriority','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('resize',1,@(x)(numel(x) == 1 & all(x > 0 )));  
@@ -9,6 +9,7 @@ ip.addParamValue('cytoDilation',5,@(x)(numel(x) == 1 & all(x > 0 )));
 ip.addParamValue('sizeFilter',1,@(x)(numel(x) == 1 & all(x > 0 ))); 
 ip.addParamValue('upSample',2,@(x)(numel(x) == 1 & all(x > 0 )));  
 ip.addParamValue('mask', [], @(x) isnumeric(x) || islogical(x));
+ip.addParamValue('cytoPM', [], @(x) isnumeric(x));
 ip.parse(varargin{:});          
 p = ip.Results;  
         
@@ -52,6 +53,19 @@ end
             case 'ring'
                 cellMask = bwlabel(bwmorph(nucleiMask>0,'thicken',p.cytoDilation));
                 mask = ones(size(cellMask));
+                
+            case 'UNet'
+                cytoPM = p.cytoPM;
+                cellMembrane = cytoPM < thresholdOtsu(imresize(cytoPM,0.25));
+                Idist = -bwdist(~cellMembrane);
+                Imin = imregionalmin(imhmin(Idist,10));
+                cytograd = imimposemin(Idist, Imin );
+                cellMask=watershed(cytograd);
+                
+                stats = regionprops(cellMask,nucleiMask,'MaxIntensity');
+                idx = find([stats.MaxIntensity]>0 );
+                cellMask = ismember(cellMask,idx);
+                cytoplasmMask = bwlabel((cellMask - nucleiMask)>0);
         end
 
          

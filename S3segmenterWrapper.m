@@ -82,6 +82,13 @@ outputPath = [outputPath name];
                 probMapSuffix{2}= PMfileName(pmI:end);
             end
             
+            nucleiPMListing = dir([classProbPath name '_CytoPM*']);
+            if ~isempty(nucleiPMListing)
+                PMfileName = nucleiPMListing.name;
+                pmI = strfind(PMfileName,'_CytoPM_');
+                probMapSuffix{3}= PMfileName(pmI:end);
+            end
+            
         case 'none'
             classProbPath = p.paths.registration;
             probMapSuffix= '.ome.tif';
@@ -222,7 +229,7 @@ clear tissue_gauss, clear maxTissue, clear tissueCrop, clear tissue, clear distM
     disp(['Segmented Nuclei'])  
    end
 
-clear nucleiPM
+
 clear nuclei
 
     %% cytoplasm segmentation
@@ -251,13 +258,13 @@ clear nuclei
 %             cyto=S3tileReturn(cyto);
 %             tissue = S3tileReturn(tissue);
             [cytoplasmMask,nucleiMaskTemp,cellMask]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
-                'cytoMethod',p.cytoMethod,'resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation);
+                'cytoMethod',p.cytoMethod,'resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation,'cytoPM',nucleiPM(:,:,3));
             exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,'nuclei',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMask,cyto,outputPath,'cyto',p.saveFig,p.saveMasks)
             exportMasks(cellMask,cyto,outputPath,'cell',p.saveFig,p.saveMasks)
             
             [cytoplasmMaskRing,nucleiMaskRing,cellMaskRing]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
-                'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation);
+                'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation,'cytoPM',nucleiPM(:,:,3));
             exportMasks(nucleiMaskRing,nucleiCrop,outputPath,'nucleiRing',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMaskRing,cyto,outputPath,'cytoRing',p.saveFig,p.saveMasks)
             exportMasks(cellMaskRing,cyto,outputPath,'cellRing',p.saveFig,p.saveMasks)
@@ -282,7 +289,7 @@ clear nuclei
    end
    disp(['Segmented Cytoplasm'])
   
- 
+ clear nucleiPM
  
   
     %% measureFeatures
