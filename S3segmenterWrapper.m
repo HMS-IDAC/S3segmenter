@@ -35,7 +35,7 @@ paths=regexp(p.paths.samplefolder,filesep,'split');
 sampleName =paths{end-1};
 rawFileListing = dir([p.paths.registration sampleName '*.' p.paths.fileExt]);
 metadata =bfGetReader([imagePath rawFileListing(1).name]);            
-numChan =metadata.getImageCount;
+p.numChan =metadata.getImageCount;
 
  %% set up output directories
 if isequal(p.Docker,'true')
@@ -71,8 +71,8 @@ outputPath = [outputPath name];
             pmI = strfind(PMfileName,'_ContoursPM_');
             probMapSuffix= cellstr(PMfileName(pmI:end));
             nucMaskChan = sscanf(char(probMapSuffix), '_ContoursPM_%d.tif');
-            if nucMaskChan >numChan
-                nucMaskChan = nucMaskChan - numChan;
+            if nucMaskChan >p.numChan
+                nucMaskChan = nucMaskChan - p.numChan;
             end
                
             nucleiPMListing = dir([classProbPath name '_NucleiPM*']);
@@ -82,11 +82,12 @@ outputPath = [outputPath name];
                 probMapSuffix{2}= PMfileName(pmI:end);
             end
             
-            nucleiPMListing = dir([classProbPath name '_CytoPM*']);
-            if ~isempty(nucleiPMListing)
-                PMfileName = nucleiPMListing.name;
+            cytoPMListing = dir([classProbPath name '_CytoPM*']);
+            if ~isempty(cytoPMListing)
+                PMfileName = cytoPMListing.name;
                 pmI = strfind(PMfileName,'_CytoPM_');
                 probMapSuffix{3}= PMfileName(pmI:end);
+                cytoMaskChan = sscanf(char(probMapSuffix{3}), '_CytoPM_%d.tif');
             end
             
         case 'none'
@@ -153,11 +154,11 @@ outputPath = [outputPath name];
             disp([filePrefix contourprobMapSuffix ' not found'])
             return
         end
-
+p.rect= rect;
 
 %% mask the core/tissue
 if isempty(p.TissueMaskChan)
-    p.TissueMaskChan = [nucMaskChan p.CytoMaskChan];
+    p.TissueMaskChan = [nucMaskChan ];
 end
 
 if isequal(p.crop,'dearray')
@@ -235,6 +236,13 @@ clear nuclei
     %% cytoplasm segmentation
    switch p.segmentCytoplasm
        case 'segmentCytoplasm'
+            if p.CytoMaskChan == 0
+                p.cytoPM = nucleiPM(:,:,3);
+                p.CytoMaskChan = cytoMaskChan;
+            else 
+                p.cytoPM=[];
+            end
+            
             cyto =[];
             for iChan = p.CytoMaskChan
                 if isequal(p.crop,'noCrop')
@@ -245,7 +253,6 @@ clear nuclei
                     cyto= cat(3,cyto,normI(double(imread([imagePath rawFileListing(1).name],iChan,'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}))));
                 end
             end
-            
             cyto=max(cyto,[],3);
            
             % load random forest model if 
@@ -258,13 +265,15 @@ clear nuclei
 %             cyto=S3tileReturn(cyto);
 %             tissue = S3tileReturn(tissue);
             [cytoplasmMask,nucleiMaskTemp,cellMask]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
-                'cytoMethod',p.cytoMethod,'resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation,'cytoPM',nucleiPM(:,:,3));
+                'cytoMethod',p.cytoMethod,'resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,...
+                'cytoDilation',p.cytoDilation,'cytoPM',p.cytoPM);
             exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,'nuclei',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMask,cyto,outputPath,'cyto',p.saveFig,p.saveMasks)
             exportMasks(cellMask,cyto,outputPath,'cell',p.saveFig,p.saveMasks)
             
             [cytoplasmMaskRing,nucleiMaskRing,cellMaskRing]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
-                'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,'cytoDilation',p.cytoDilation,'cytoPM',nucleiPM(:,:,3));
+                'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,...
+                'cytoDilation',p.cytoDilation,'cytoPM',p.cytoPM);
             exportMasks(nucleiMaskRing,nucleiCrop,outputPath,'nucleiRing',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMaskRing,cyto,outputPath,'cytoRing',p.saveFig,p.saveMasks)
             exportMasks(cellMaskRing,cyto,outputPath,'cellRing',p.saveFig,p.saveMasks)
@@ -291,7 +300,29 @@ clear nuclei
   
  clear nucleiPM
  
+  %% detect puncta
+if (min(p.detectPuncta)>0) && (numel(p.detectPuncta) <= p.numChan)
+      if numel(p.detectPuncta) ~= numel(p.punctaSigma)
+          p.punctaSigma = p.punctaSigma(1) * ones(1,numel(p.detectPuncta));
+      end
+      
+      if numel(p.detectPuncta) ~= numel(p.punctaSD)
+          p.punctaSD = p.punctaSD(1) * ones(1,numel(p.detectPuncta));
+      end
+    counter=1;
+    for iPunctaChan = p.detectPuncta
+        punctaChan =imread([imagePath rawFileListing(1).name],iPunctaChan,'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}); 
+        spots=S3punctaDetection(punctaChan,p.punctaSigma(counter),p.punctaSD(counter));
+        exportMasks(spots.*cellMask,punctaChan,outputPath,['punctaChan' int2str(iPunctaChan)],'false','true')
+        exportMasks(bwperim(cellMask>0)+(spots.*cellMask),punctaChan,outputPath,['punctaChan' int2str(iPunctaChan)],'true','false')
+        exportMasks(spots.*cellMaskRing,punctaChan,outputPath,['punctaRingChan' int2str(iPunctaChan)],'false','true')
+        exportMasks(bwperim(cellMaskRing>0)+(spots.*cellMaskRing),punctaChan,outputPath,['punctaRingChan' int2str(iPunctaChan)],'true','false')
+        counter=counter+1;
+    end
+end
   
+    
+      
     %% measureFeatures
     if isequal(p.measureFeatures,'true')
         registrationFileList = dir([p.paths.registration filesep]);

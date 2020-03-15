@@ -13,11 +13,10 @@ p = ip.Results;
 
 
 %% preprocess
-if size(NucleiPM,3)==2
+if (size(NucleiPM,3)==2) || (size(NucleiPM,3)==3)
     nucleiCentersResized = imresize(NucleiPM(:,:,2),p.resize);
     nucleiContoursResized = imresize(NucleiPM(:,:,1),p.resize);
 else
-    
     nucleiContoursResized = imresize(NucleiPM(:,:,1),p.resize);
     nucleiCentersResized = max(nucleiContoursResized(:))-nucleiContoursResized;
 end
@@ -132,8 +131,8 @@ switch p.nucleiRegion
 
     idx = find([statsFilt.MeanIntensity]>MITh );
     allNuclei = bwlabel(ismember(allNuclei,idx));
-    stats=regionprops(allNuclei,'Area');
-    idx = find( [stats.Area]>(nucleiDiameter(1)^2)*3/4 & [stats.Area] < (nucleiDiameter(2)^2)*3/4);
+    stats=regionprops(allNuclei,'Area','Solidity');
+    idx = find( [stats.Area]>(nucleiDiameter(1)^2)*3/4 & [stats.Area] < (nucleiDiameter(2)^2)*3/4  & [stats.Solidity]>0.8);
    end
 
    nucleiMask = ismember(allNuclei,idx);

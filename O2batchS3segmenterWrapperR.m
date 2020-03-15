@@ -6,13 +6,13 @@ ip.addParamValue('HPC','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('fileNum',1,@(x)(numel(x) > 0 & all(x > 0 )));  
 ip.addParamValue('ClassProbSource','unet',@(x)(ismember(x,{'RF','unet','none'})));
 ip.addParamValue('NucMaskChan',[2],@(x)(numel(x) > 0 & all(x > 0 )));  % deprecated. Channel number implied from prob map filename
-ip.addParamValue('CytoMaskChan',[2],@(x)(numel(x) > 0 & all(x > 0 )));  
+ip.addParamValue('CytoMaskChan',[2],@(x)(numel(x) > 0 & all(x > -1 )));  
 ip.addParamValue('TissueMaskChan',[],@(x)(isnumeric(x))); 
 ip.addParamValue('RefineTissueMask',[0],@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('cytoDilation',5,@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('mask','tissue',@(x)(ismember(x,{'TMA','tissue','none'}))); % set to true if sample is TMA cores
 ip.addParamValue('crop','noCrop',@(x)(ismember(x,{'interactiveCrop','autoCrop','dearray','noCrop'})));
-ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'RF','distanceTransform','bwdistanceTransform','ring'})));
+ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
 ip.addParamValue('MedianIntensity','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('saveFig','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('saveMasks','true',@(x)(ismember(x,{'true','false'})));
@@ -24,6 +24,9 @@ ip.addParamValue('segmentCytoplasm','segmentCytoplasm',@(x)(ismember(x,{'segment
 ip.addParamValue('useGPUArray','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('inferNucCenters','UNet',@(x)(ismember(x,{'UNet','RF','Int'})));
 ip.addParamValue('nucleiPriority','false',@(x)(ismember(x,{'true','false'})));
+ip.addParamValue('detectPuncta',0,@(x)(numel(x) >0 & all(x > -1 )));
+ip.addParamValue('punctaSigma',1,@(x)(numel(x) >0 & all(x > 0 )));
+ip.addParamValue('punctaSD',4,@(x)(numel(x) >0 & all(x > 0 )));
 ip.addParamValue('resizeFactor',1,@(x)(numel(x) == 1 & all(x > 0 )));  
 ip.addParamValue('logSigma',[2.5],@(x)(numel(x) >0 & all(x > 0 )));
 ip.addParamValue('chanRange',[0],@(x)(numel(x) >0 & all(x > 0 ))); %channels for measuring features. If 0, assume all channels.

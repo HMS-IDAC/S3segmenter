@@ -55,17 +55,25 @@ end
                 mask = ones(size(cellMask));
                 
             case 'UNet'
-                cytoPM = p.cytoPM;
-                cellMembrane = cytoPM < thresholdOtsu(imresize(cytoPM,0.25));
+                % split cytoplasm
+                cellMembrane = p.cytoPM < thresholdOtsu(imresize(p.cytoPM,0.25));
                 Idist = -bwdist(~cellMembrane);
                 Imin = imregionalmin(imhmin(Idist,10));
                 cytograd = imimposemin(Idist, Imin );
                 cellMask=watershed(cytograd);
                 
-                stats = regionprops(cellMask,nucleiMask,'MaxIntensity');
-                idx = find([stats.MaxIntensity]>0 );
-                cellMask = ismember(cellMask,idx);
-                cytoplasmMask = bwlabel((cellMask - nucleiMask)>0);
+                % remove all nuclei that touch membranes
+                stats = regionprops(nucleiMask,cellMask==0,'MaxIntensity');
+                idx = find([stats.MaxIntensity]<1 );
+                nucleiMask = ismember(bwlabel(nucleiMask),idx);
+                
+                mask = cellMask>0;
+                
+                % find cytoplasm with leftover nuclei
+%                 stats = regionprops(cellMask,nucleiMaskTest>0,'MaxIntensity');
+%                 idx = find([stats.MaxIntensity]>0);
+%                 finalCellMask = bwlabel(ismember(cellMask,idx));
+%                 nucleiMask = finalCellMask.*(nucleiMaskTest>0);
         end
 
          

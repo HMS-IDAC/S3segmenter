@@ -188,10 +188,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # gather filename information
-#    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001.ome.tif'
-#    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
-#    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_NucleiPM_1.tif'
-#    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_ContoursPM_1.tif'
+#    imagePath = 'Y:/sorger/data/Broad/H1_775/registration/H1_775.ome.tif'
+#    outputPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/segmentation'
+#    nucleiClassProbPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/H1_775_ContoursPM_5.tif'
+#    contoursClassProbPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/H1_775_ContoursPM_5.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
     imagePath = args.imagePath
     outputPath = args.outputPath
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     # get channel used for nuclei segmentation
     if args.probMapChan==-1:
         test = os.path.basename(contoursClassProbPath)
-        nucMaskChan = int(test.split('_')[2].split('.')[0])-1
+        nucMaskChan = int(test.split('_ContoursPM_')[1].split('.')[0])-1
         
     else:
         nucMaskChan = args.probMapChan
