@@ -188,16 +188,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # gather filename information
-    imagePath = 'Y:/sorger/data/Broad/H1_775/registration/H1_775.ome.tif'
-    outputPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/segmentation'
-    nucleiClassProbPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/H1_775_ContoursPM_5.tif'
-    contoursClassProbPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/H1_775_ContoursPM_5.tif'
-    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    imagePath = args.imagePath
-#    outputPath = args.outputPath
-#    nucleiClassProbPath = args.nucleiClassProbPath
-#    contoursClassProbPath = args.contoursClassProbPath
-#    maskPath = args.maskPath
+#    imagePath = 'D:\LSP\cycif\testsets\exemplar-001\registration\exemplar-001.ome.tif'
+#    outputPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/segmentation'
+#    nucleiClassProbPath = 'D:\LSP\cycif\testsets\exemplar-001\prob_maps\exemplar-001_ContoursPM_1.tif'
+#    contoursClassProbPath = 'D:\LSP\cycif\testsets\exemplar-001\prob_maps\exemplar-001_ContoursPM_1.tif'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
+    imagePath = args.imagePath
+    outputPath = args.outputPath
+    nucleiClassProbPath = args.nucleiClassProbPath
+    contoursClassProbPath = args.contoursClassProbPath
+    maskPath = args.maskPath
        
     fileName = os.path.basename(imagePath)
     filePrefix = fileName[0:fileName.index('.')]
