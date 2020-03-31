@@ -27,6 +27,7 @@ import argparse
 import re
 
 
+
 def imshowpair(A,B):
     plt.imshow(A,cmap='Purples')
     plt.imshow(B,cmap='Greens',alpha=0.5)
@@ -51,7 +52,7 @@ def normI(I):
     J = J/(p99-p1);
     return J
 
-def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFitler,nucleiRegion):
+def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegion):
     nucleiContours = nucleiPM[:,:,1]
     nucleiCenters = nucleiPM[:,:,0]
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
@@ -69,29 +70,41 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     _, fgm= cv2.connectedComponents(fgm.astype(np.uint8))
     
     foregroundMask= morphology.watershed(nucleiContours,fgm,watershed_line=True)
-   
     allNuclei = ((foregroundMask)*mask)
-    P = regionprops(allNuclei,nucleiCenters)
+    if nucleiFilter == 'IntPM':
+        P = regionprops(allNuclei,nucleiCenters)
+    elif nucleiFilter == 'Int':
+        P = regionprops(allNuclei,nucleiImage)
     mean_int = np.array([prop.mean_intensity for prop in P]) 
     #kmeans = KMeans(n_clusters=2).fit(mean_int.reshape(-1,1))
     MITh = threshold_otsu(mean_int.reshape(-1,1))
-    X = np.zeros(foregroundMask.shape,dtype=np.uint16)
+    allNuclei = np.zeros(foregroundMask.shape,dtype=np.uint32)
     count = 0
-    maxArea = (logSigma[1]**2)*3/4
-    minArea = (logSigma[0]**2)*3/4
 
     for props in P:
         intensity = props.mean_intensity
-        area = props.area
-        if intensity >MITh and minArea < area < maxArea:
+        if intensity >MITh:
             count += 1
             yi = props.coords[:, 0]
             xi = props.coords[:, 1]
-            X[yi, xi] = count
+            allNuclei[yi, xi] = count
     
-#    idx = [props.label for props in P if props.mean_intensity > MITh and minArea < props.area < maxArea]
-#    final_mask =label(np.isin(allNuclei, idx))
-    return X
+    P = regionprops(allNuclei)
+    count=0
+    maxArea = (logSigma[1]**2)*3/4
+    minArea = (logSigma[0]**2)*3/4
+    nucleiMask = np.zeros(foregroundMask.shape,dtype=np.uint32)
+    for props in P:
+        area = props.area
+        solidity = props.solidity
+        if minArea < area < maxArea and solidity >0.8:
+            count += 1
+            yi = props.coords[:, 0]
+            xi = props.coords[:, 1]
+            nucleiMask[yi, xi] = count
+           
+            
+    return nucleiMask
     
 #    img2 = nucleiImage.copy()
 #    stacked_img = np.stack((img2,)*3, axis=-1)
@@ -123,19 +136,18 @@ def S3CytoplasmSegmentation(nucleiMask,cyto,mask,cytoMethod='distanceTransform',
 #    markers = label(nucleiMask)
 #    cellMask  = watershed(gdist,markers)
 #    cellMask = cellMask*mask
-    
-#    elif cytoMethod == 'distanceTransform':
     gdist = distance_transform_edt(1-(nucleiMask>0))
-    nucleiMask = np.array(nucleiMask,dtype=np.uint16)
-    mask = np.array(mask,dtype=np.uint16)
-    markers = label(nucleiMask)
-    cellMask  = watershed(cyto,markers,watershed_line=True)
+    if cytoMethod == 'distanceTransform':
+        mask = np.array(mask,dtype=np.uint32)
+        
+    elif cytoMethod == 'ring':
+        mask =np.array(bwmorph(nucleiMask>0,radius)*mask,dtype=np.uint32)
+    cellMask  = watershed(gdist,nucleiMask,watershed_line=True)
     cellMask = cellMask*mask
-# overlayOutline(np.array(cellMask==0,dtype=np.uint8),nucleiMask)
-#    elif cytoMethod == 'ring':
-#    cellMask =bwmorph(nucleiMask>0,radius)
-    cellMask =  np.array(cellMask,dtype=np.uint16)
-    cytoplasmMask = cv2.subtract(cellMask,nucleiMask)
+    cellMask =  np.array(cellMask,dtype=np.uint32)
+    nucleiMask = np.array(nucleiMask>0,dtype=np.uint32)
+    nucleiMask = cellMask*nucleiMask
+    cytoplasmMask = np.subtract(cellMask,nucleiMask)
 #    imshow(cytoplasmMask)
     return cytoplasmMask,nucleiMask,cellMask
     
@@ -189,8 +201,8 @@ if __name__ == '__main__':
     
     # gather filename information
 #    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001.ome.tif'
-#    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation/exemplar-001'
-#    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_ContoursPM_1.tif'
+#    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
+#    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_NucleiPM_1.tif'
 #    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_ContoursPM_1.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
     imagePath = args.imagePath
