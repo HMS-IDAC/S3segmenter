@@ -151,7 +151,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
         kwargs['resolution'] = (resolution, resolution, 'cm')
         kwargs['metadata'] = None
         kwargs['description'] = '!!xml!!'
-        tifffile.imsave(outputPath + os.path.sep + fileName + 'Mask.tif',mask)
+        imsave(outputPath + os.path.sep + fileName + 'Mask.tif',mask, plugin="tifffile")
         
     if saveFig== True:
         mask=np.uint8(mask>0)
@@ -188,10 +188,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # gather filename information
-#    imagePath = 'D:\LSP\cycif\testsets\exemplar-001\registration\exemplar-001.ome.tif'
-#    outputPath = 'Y:/sorger/data/Broad/H1_775/prob_maps/segmentation'
-#    nucleiClassProbPath = 'D:\LSP\cycif\testsets\exemplar-001\prob_maps\exemplar-001_ContoursPM_1.tif'
-#    contoursClassProbPath = 'D:\LSP\cycif\testsets\exemplar-001\prob_maps\exemplar-001_ContoursPM_1.tif'
+#    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001.ome.tif'
+#    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation/exemplar-001'
+#    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_ContoursPM_1.tif'
+#    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_ContoursPM_1.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
     imagePath = args.imagePath
     outputPath = args.outputPath
