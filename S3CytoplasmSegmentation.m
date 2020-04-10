@@ -1,7 +1,7 @@
 function [cytoplasmMask,nucleiMask,finalCellMask] = S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,varargin)
 
 ip = inputParser;
-ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
+ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'hybrid','RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
 ip.addParamValue('useGPUArray','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('nucleiPriority','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('resize',1,@(x)(numel(x) == 1 & all(x > 0 )));  
@@ -33,6 +33,43 @@ end
               bgm =imresize(bwmorph( imgaussfilt3(cyto,2)<100,'thin',Inf),2);
               cytograd= imimposemin(imresize(contours,[size(nucleiMask,1) size(nucleiMask,2)]),bgm|nucleiMask);
               cellMask= watershed(cytograd);
+                
+            case 'hybrid'
+                cytoBlur = imgaussfilt(cyto,2);
+%                 grad = imgradient(cytoBlur);
+                grad=stdfilt(cytoBlur,true(3,3));  
+                Idist= bwdist(nucleiMask>0);
+                Idist= sqrt(grad.^2 + 0.00001*max(grad(:))/max(Idist(:))*Idist.^2);
+                cytograd = imimposemin(Idist,nucleiMask>0 | (imerode(1-mask,strel('disk',3)))  );  
+                cellMask = watershed(cytograd);
+                mask=ones(size(cellMask));
+%                   cellMask = cellMask.*cast(mask,class(cellMask));
+%                   stats=regionprops(cellMask,nucleiMask>0,'MaxIntensity','Area');
+%                   idx = find([stats.MaxIntensity]>0 );
+%                   finalCellMask = ismember(cellMask,idx);
+%                     imshowpair(finalCellMask,imadjust(cyto))
+%                 % get cells with cytoplasm
+%                 cytoMarkerMask = bwareaopen(imfill(mask,'holes'),200);
+%                 
+%                 % get cells without cytoplasm
+%                 stats=regionprops(nucleiMask,cytoMarkerMask,'MaxIntensity');
+%                 idx = find([stats.MaxIntensity]==0 );
+%                 nocytoNuclei = ismember(nucleiMask,idx);
+%                 Itest  = bwmorph(nocytoNuclei,'shrink','Inf');
+%                 nocytoNucleicyto = bwdist(Itest | cytoMarkerMask);
+%                 nocytoNucleicyto(cytoMarkerMask)=0;
+%                 nocytoNucleicyto(nocytoNucleicyto>10)=0;
+%                 
+%                 
+%                 cytoNuclei = (nucleiMask>0) - (nocytoNuclei>0);
+%                 Imin  = bwmorph(cytoNuclei,'shrink','Inf');
+%                 gdist = graydist(cyto+ nocytoNucleicyto,Imin|Itest).*cytoMarkerMask;
+%                 cytograd = imimposemin(gdist, 1-(cytoMarkerMask | nocytoNucleicyto>0)|nucleiMask>0);
+%                 cellMask=watershed(cytograd);
+%                 mask = ones(size(cellMask,1),size(cellMask,2));
+% %                 stats = regionprops(cellMask,nucleiMask,'MaxIntensity','Area');
+% %                 idx = find([stats.MaxIntensity]>0 & [stats.Area]<5000);
+% %                 finalCellMask = ismember(cellMask,idx);
                 
             case 'distanceTransform'
                 gdist = graydist(cyto,bwmorph(nucleiMask>0,'shrink','Inf'));

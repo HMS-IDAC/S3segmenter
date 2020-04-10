@@ -158,7 +158,7 @@ p.rect= rect;
 
 %% mask the core/tissue
 if isempty(p.TissueMaskChan)
-    p.TissueMaskChan = [nucMaskChan ];
+    p.TissueMaskChan = [nucMaskChan];
 end
 
 if isequal(p.crop,'dearray')
@@ -171,19 +171,29 @@ else
     tissue =[];
     if isequal(p.crop,'noCrop')
         for iChan = p.TissueMaskChan
-            tissue= cat(3,tissue,normI(double(imresize(imread([imagePath rawFileListing(1).name],iChan),p.resizeFactor))));
+            tissueCrop= normI(double(imresize(imread([imagePath rawFileListing(1).name],iChan),p.resizeFactor)));
+            tissue_gauss = imgaussfilt3(tissueCrop,1);
+            tissue_gauss(tissue_gauss==0)=NaN; %remove outlier contributions to automatic threshold calculation
+            tissue=cat(3,tissue,tissue_gauss>thresholdMinimumError(tissue_gauss,'model','poisson'));
         end
     else
         for iChan = p.TissueMaskChan
-            tissue= cat(3,tissue,normI(double(imresize(imread([imagePath rawFileListing(1).name],iChan,...
-                'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}),p.resizeFactor))));
+%             tissue= cat(3,tissue,normI(double(imresize(imread([imagePath rawFileListing(1).name],iChan,...
+%                 'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}),p.resizeFactor))));
+              tissueCrop= double(imread([imagePath rawFileListing(1).name],iChan,...
+                'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}));
+               tissue_gauss = imgaussfilt3(tissueCrop,1);
+               tissue_gauss(tissue_gauss==0)=NaN; %remove outlier contributions to automatic threshold calculation
+               tissue=cat(3,tissue,tissue_gauss>thresholdMinimumError(tissue_gauss,'model','poisson'));
+               tissue=cat(3,tissue,tissue_gauss>thresholdOtsu(tissue_gauss));
         end
     end
-    tissueCrop = sum(tissue,3);
-    tissue_gauss = imgaussfilt3(tissueCrop,1);
-    tissue_gauss1=tissue_gauss;
-    tissue_gauss1(tissue_gauss>prctile(tissue_gauss,99))=NaN; %remove outlier contributions to automatic threshold calculation
-    TMAmask=imresize(tissue_gauss>thresholdMinimumError(tissue_gauss1,'model','poisson'),size(tissueCrop));
+        TMAmask = max(tissue,[],3);
+%     tissueCrop = max(tissue,[],3);
+%     tissue_gauss = imgaussfilt3(tissueCrop,1);
+%     tissue_gauss(tissue_gauss==0)=NaN; %remove outlier contributions to automatic threshold calculation
+%     TMAmask=imresize(tissue_gauss>thresholdMinimumError(tissue_gauss,'model','poisson'),size(tissueCrop));
+   
     if sum(sum(TMAmask)) ==0
         return
     end

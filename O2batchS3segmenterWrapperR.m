@@ -12,7 +12,7 @@ ip.addParamValue('RefineTissueMask',[0],@(x)(numel(x) > 0 & all(x > 0 )));
 ip.addParamValue('cytoDilation',5,@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('mask','tissue',@(x)(ismember(x,{'TMA','tissue','none'}))); % set to true if sample is TMA cores
 ip.addParamValue('crop','noCrop',@(x)(ismember(x,{'interactiveCrop','autoCrop','dearray','noCrop'})));
-ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
+ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'hybrid','RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
 ip.addParamValue('MedianIntensity','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('saveFig','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('saveMasks','true',@(x)(ismember(x,{'true','false'})));
