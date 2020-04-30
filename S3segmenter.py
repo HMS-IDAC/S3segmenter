@@ -15,6 +15,7 @@ from skimage.filters import gaussian
 from skimage.feature import peak_local_max
 from skimage.color import label2rgb
 from skimage.io import imsave
+from skimage.segmentation import clear_border
 from scipy.ndimage.filters import uniform_filter
 from os.path import *
 from os import listdir, makedirs, remove
@@ -26,6 +27,7 @@ import cv2
 import sys
 import argparse
 import re
+import copy
 
 
 def imshowpair(A,B):
@@ -142,17 +144,19 @@ def S3CytoplasmSegmentation(nucleiMask,cyto,mask,cytoMethod='distanceTransform',
         bg = binary_erosion(np.invert(mask),morphology.selem.disk(radius, np.uint8))
         markers=nucleiMask.copy()
         markers[bg==1] = np.amax(nucleiMask)+1
+        markers = label(markers>0,connectivity=1)
         mask = np.ones(nucleiMask.shape)
         del bg
     elif cytoMethod == 'ring':
         mask =np.array(bwmorph(nucleiMask,radius)*mask,dtype=np.uint32)>0
         markers= nucleiMask
     
-    cellMask  = watershed(gdist,markers,watershed_line=True)
+    cellMask  =clear_border(watershed(gdist,markers,watershed_line=True))
     del gdist, markers, cyto
     cellMask = np.array(cellMask*mask,dtype=np.uint32)
+	
     finalCellMask = np.zeros(cellMask.shape,dtype=np.uint32)
-    P = regionprops(cellMask,nucleiMask>0,cache=False)
+    P = regionprops(label(cellMask>0,connectivity=1),nucleiMask>0,cache=False)
     count=0
     for props in P:
          if props.max_intensity>0 :
@@ -160,11 +164,10 @@ def S3CytoplasmSegmentation(nucleiMask,cyto,mask,cytoMethod='distanceTransform',
             yi = props.coords[:, 0]
             xi = props.coords[:, 1]
             finalCellMask[yi, xi] = count
-
     nucleiMask = np.array(nucleiMask>0,dtype=np.uint32)
-    nucleiMask = cellMask*nucleiMask
-    cytoplasmMask = np.subtract(cellMask,nucleiMask)
-    return cytoplasmMask,nucleiMask,cellMask
+    nucleiMask = finalCellMask*nucleiMask
+    cytoplasmMask = np.subtract(finalCellMask,nucleiMask)
+    return cytoplasmMask,nucleiMask,finalCellMask
     
 def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks = True):
     outputPath =outputPath + os.path.sep + filePrefix
@@ -201,8 +204,8 @@ if __name__ == '__main__':
     parser.add_argument("--maskPath")
     parser.add_argument("--probMapChan",type = int, default = -1)
     parser.add_argument("--mask",choices=['TMA', 'tissue','none'],default = 'tissue')
-    parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray'], default = 'noCrop')
-    parser.add_argument("--cytoMethod",choices=['distanceTransform','bwdistanceTransform','ring'],default = 'distanceTransform')
+    parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray','plate'], default = 'noCrop')
+    parser.add_argument("--cytoMethod",choices=['hybrid','distanceTransform','bwdistanceTransform','ring'],default = 'distanceTransform')
     parser.add_argument("--nucleiFilter",choices=['IntPM','LoG','Int','none'],default = 'IntPM')
     parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation'], default = 'watershedContourInt')
     parser.add_argument("--segmentCytoplasm",choices = ['segmentCytoplasm','ignoreCytoplasm'],default = 'segmentCytoplasm')
@@ -221,13 +224,24 @@ if __name__ == '__main__':
 #    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_NucleiPM_25.tif'
 #    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/prob_maps/exemplar-001_ContoursPM_25.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-    
+#    args.cytoMethod = 'hybrid'
+	
+	#plate 
+#    imagePath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/registration/E3_fld_1.ome.tif'
+#    outputPath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/segmentation'
+#    nucleiClassProbPath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/prob_maps/E3_fld_1_NucleiPM_1.tif'
+#    contoursClassProbPath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/prob_maps/E3_fld_1_ContoursPM_1.tif'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
+#    args.crop = 'plate'
+#    args.cytoMethod ='hybrid'
+        
     #large tissue
 #    imagePath =  'Y:/sorger/data/RareCyte/Connor/Z155_PTCL/Ton_192/registration/Ton_192.ome.tif'
 #    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
 #    nucleiClassProbPath = 'Y:/sorger/data/RareCyte/Connor/Z155_PTCL/Ton_192/prob_maps/Ton_192_NucleiPM_41.tif'
 #    contoursClassProbPath = 'Y:/sorger/data/RareCyte/Connor/Z155_PTCL/Ton_192/prob_maps/Ton_192_ContoursPM_41.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
+    
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -246,10 +260,10 @@ if __name__ == '__main__':
         nucMaskChan = args.probMapChan
         
     if args.TissueMaskChan==-1:
-        TissueMaskChan = args.CytoMaskChan
+        TissueMaskChan = copy.copy(args.CytoMaskChan)
         TissueMaskChan.append(nucMaskChan)
     else:
-        TissueMaskChan = args.TissueMaskChan
+        TissueMaskChan = args.TissueMaskChan[:]
         TissueMaskChan.append(nucMaskChan)
             
     #crop images if needed
@@ -260,7 +274,7 @@ if __name__ == '__main__':
         rect=np.transpose(r)*10
         PMrect= [rect[1], rect[0], rect[3], rect[2]]
         nucleiCrop = nucleiCrop[int(rect[1]):int(rect[1]+rect[3]), int(rect[0]):int(rect[0]+rect[2])]
-    elif args.crop == 'noCrop' or args.crop == 'dearray' :
+    elif args.crop == 'noCrop' or args.crop == 'dearray'  or args.crop == 'plate':
         nucleiCrop = tifffile.imread(imagePath,key = nucMaskChan)
         rect = [0, 0, nucleiCrop.shape[0], nucleiCrop.shape[1]]
         PMrect= rect
@@ -273,6 +287,9 @@ if __name__ == '__main__':
     # mask the core/tissue
     if args.crop == 'dearray':
         TMAmask = tifffile.imread(maskPath)
+    elif args.crop =='plate':
+        TMAmask = np.ones(nucleiCrop.shape)
+		
     else:
         tissue = np.empty((len(TissueMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.uint16)
         count=0
@@ -304,15 +321,15 @@ if __name__ == '__main__':
     # cytoplasm segmentation
     if args.segmentCytoplasm == 'segmentCytoplasm':
         count =0
-        if args.crop == 'noCrop' or args.crop == 'dearray':
+        if args.crop == 'noCrop' or args.crop == 'dearray' or args.crop == 'plate':
             cyto=np.empty((len(args.CytoMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.uint16)    
             for iChan in args.CytoMaskChan:
-                cyto[count,:,:] =  tifffile.imread(imagePath, key=iChan)
+                cyto[count,:,:] =  skio.imread(imagePath, key=iChan)
                 count+=1
         else:
             cyto=np.empty((len(args.CytoMaskChan),rect[3],rect[2]),dtype=np.int16)
             for iChan in args.CytoMaskChan:
-                cytoFull= tifffile.imread(imagePath, key=iChan)
+                cytoFull= skio.imread(imagePath, key=iChan)
                 cyto[count,:,:] = cytoFull[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
                 count+=1
         cyto = np.amax(cyto,axis=0)

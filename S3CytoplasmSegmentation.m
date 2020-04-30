@@ -1,7 +1,7 @@
-function [cytoplasmMask,nucleiMask,finalCellMask] = S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,varargin)
+function [cytoplasmMask,nucleiMask,finalCellMask] = S3CytoplasmSegmentation(nucleiMask,cyto,varargin)
 
 ip = inputParser;
-ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'hybrid','RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
+ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'hybrid','ilastik','distanceTransform','bwdistanceTransform','ring','UNet'})));
 ip.addParamValue('useGPUArray','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('nucleiPriority','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('resize',1,@(x)(numel(x) == 1 & all(x > 0 )));  
@@ -23,17 +23,7 @@ end
 %% cytoplasm segmentation methods
         
         switch p.cytoMethod
-            case 'RF'
-          F = pcImageFeatures(imresize(double(cyto)/65335,p.resize,'bilinear'),modelCat.sigmas,modelCat.offsets,...
-              modelCat.osSigma,modelCat.radii,modelCat.cfSigma,modelCat.logSigmas,modelCat.sfSigmas,...
-              modelCat.ridgeSigmas,modelCat.ridgenangs,modelCat.edgeSigmas,modelCat.edgenangs,modelCat.nhoodEntropy,...
-              modelCat.nhoodStd);
-             [imL,catClassProbs] = imClassify(F,modelCat.treeBag,100);
-              contours = imresize(catClassProbs(:,:,2),2);
-              bgm =imresize(bwmorph( imgaussfilt3(cyto,2)<100,'thin',Inf),2);
-              cytograd= imimposemin(imresize(contours,[size(nucleiMask,1) size(nucleiMask,2)]),bgm|nucleiMask);
-              cellMask= watershed(cytograd);
-                
+                         
             case 'hybrid'
                 cytoBlur = imgaussfilt(cyto,2);
 %                 grad = imgradient(cytoBlur);
@@ -91,6 +81,11 @@ end
                 cellMask = bwlabel(bwmorph(nucleiMask>0,'thicken',p.cytoDilation));
                 mask = ones(size(cellMask));
                 
+            case 'ilastik'
+                gdist = bwdist(nucleiMask>0);
+                cytograd = imimposemin(gdist, nucleiMask>0 );
+                cellMask=watershed(cytograd);
+                cellMask = cellMask.*cast(mask,class(cellMask));
             case 'UNet'
                 % split cytoplasm
                 cellMembrane = p.cytoPM < thresholdOtsu(imresize(p.cytoPM,0.25));

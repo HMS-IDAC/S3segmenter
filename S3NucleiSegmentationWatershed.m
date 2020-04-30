@@ -13,9 +13,9 @@ p = ip.Results;
 
 
 %% preprocess
-if (size(NucleiPM,3)==2) || (size(NucleiPM,3)==3)
-    nucleiCentersResized = imresize(NucleiPM(:,:,2),p.resize);
-    nucleiContoursResized = imresize(NucleiPM(:,:,1),p.resize);
+if size(NucleiPM,3)>2
+    nucleiCentersResized = imresize(NucleiPM(:,:,1),p.resize);
+    nucleiContoursResized = imresize(NucleiPM(:,:,2),p.resize);
 else
     nucleiContoursResized = imresize(NucleiPM(:,:,1),p.resize);
     nucleiCentersResized = max(nucleiContoursResized(:))-nucleiContoursResized;
@@ -67,8 +67,8 @@ end
         end
 %         numLoGScales = ceil((nucleiDiameter(2)-nucleiDiameter(1))/3);
 %         logmask = (nucleiImageResized>thresholdMinimumError(nucleiImageResized,'model','poisson'));
-        logmask = nucleiCentersResized>150;
-        [logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(255-nucleiContoursResized,logmask,'globalThreshold',nucleiDiameter(2),nucleiImageResized);
+        logmask = nucleiCentersResized>0.6*max(nucleiCentersResized(:));
+        [logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(max(nucleiContoursResized(:)) - nucleiContoursResized,logmask,'globalThreshold',nucleiDiameter(2),nucleiImageResized);
      end
 %      figure,imshowpair(logfgm,nucleiCentersResized)
 %         logfgm=logfgm.*p.mask;
@@ -90,13 +90,13 @@ switch p.nucleiRegion
         cytograd= imimposemin(gdist,imresize(logfgm,size(gdist)));
         foregroundMask=watershed(cytograd);
     case 'watershedBWDist'
-    fgth=imtophat(nucleiCentersResized,strel('disk',7));
-    fgMask = fgth>100;%imclose(fgth>50,strel('disk',3));
+%     fgth=imtophat(nucleiCentersResized,strel('disk',7));
+    fgMask = nucleiCentersResized>thresholdOtsu(nucleiCentersResized);%imclose(fgth>50,strel('disk',3));
     IDist = -bwdist(~fgMask);
-    logfgm = imregionalmin(imgaussfilt3(IDist,4));
+    logfgm = imregionalmin(imhmin(IDist,1));
     gdist = graydist(nucleiContoursResized,logfgm);
     
-    cytograd= imimposemin(gdist,logfgm);
+    cytograd= imimposemin(IDist,logfgm);
     foregroundMask=watershed(cytograd);
     foreground =nucleiCentersResized>thresholdMinimumError(nucleiCentersResized,'model','poisson');
     foregroundMask = foregroundMask.*cast(foreground,class(foregroundMask));

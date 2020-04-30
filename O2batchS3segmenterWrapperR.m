@@ -4,15 +4,15 @@ function O2batchS3segmenterWrapperR(mainPath,varargin)
 ip = inputParser;
 ip.addParamValue('HPC','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('fileNum',1,@(x)(numel(x) > 0 & all(x > 0 )));  
-ip.addParamValue('ClassProbSource','unet',@(x)(ismember(x,{'RF','unet','none'})));
-ip.addParamValue('NucMaskChan',[2],@(x)(numel(x) > 0 & all(x > 0 )));  % deprecated. Channel number implied from prob map filename
+ip.addParamValue('ClassProbSource','unet',@(x)(ismember(x,{'RF','ilastik','unet','none'})));
+ip.addParamValue('NucMaskChan',[1],@(x)(numel(x) > 0 & all(x > 0 )));  
 ip.addParamValue('CytoMaskChan',[2],@(x)(numel(x) > 0 & all(x > -1 )));  
 ip.addParamValue('TissueMaskChan',[],@(x)(isnumeric(x))); 
 ip.addParamValue('RefineTissueMask',[0],@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('cytoDilation',5,@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('mask','tissue',@(x)(ismember(x,{'TMA','tissue','none'}))); % set to true if sample is TMA cores
 ip.addParamValue('crop','noCrop',@(x)(ismember(x,{'interactiveCrop','autoCrop','dearray','noCrop'})));
-ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'hybrid','RF','distanceTransform','bwdistanceTransform','ring','UNet'})));
+ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'hybrid','ilastik','distanceTransform','bwdistanceTransform','ring','UNet'})));
 ip.addParamValue('MedianIntensity','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('saveFig','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('saveMasks','true',@(x)(ismember(x,{'true','false'})));
@@ -51,7 +51,13 @@ end
 
 paths.metadata = ['metadata' ];
 paths.dearray = ['dearray' ];
-paths.probabilitymaps= ['prob_maps'];
+if isequal(p.ClassProbSource,'ilastik')
+    paths.probabilitymaps= ['prob_maps_ilastik'];
+    p.probMapOrder = [1 2 3 2];
+else
+    paths.probabilitymaps= ['prob_maps'];
+    p.probMapOrder = [1 2 3 4];
+end
 paths.segmentation = ['segmentation'];
 paths.analysis = ['analysis'];
 paths.registration = ['registration'];
@@ -60,7 +66,7 @@ if isequal(p.crop,'dearray')
     FileExt = 'tif';
     searchPath = ['dearray'];
 else
-    FileExt = 'ome.tif';
+    FileExt = 'tif';
     searchPath = ['registration'];
 end
 

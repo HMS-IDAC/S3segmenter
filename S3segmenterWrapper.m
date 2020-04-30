@@ -51,57 +51,81 @@ outputPath = [outputPath name];
 
     %% read class probability maps
     
-    switch p.ClassProbSource
-        case 'RF'
-            if isempty(modelPathName)
-                [modelFileName, modelPathName] = uigetfile([testPath filesep '*.mat'],'Select RF model');
-            end
-            % modelFileName = 'modelReducedFeatures.mat';
-            % modelPathName = 'D:\LSP\cycif\S3\nucleiTrainingSet\'; 
-        %#pragma treeBagger
-            load([modelPathName modelFileName])
-
-            nuclei = imread([testPath rawFileListing(1).name]);
-            [nucleiPM,nucleiCrop]=RFSplitter(nuclei,modelNuc,'split',false);
-
-        case 'unet'
+%     switch p.ClassProbSource
+%         case 'RF'
+%             if isempty(modelPathName)
+%                 [modelFileName, modelPathName] = uigetfile([testPath filesep '*.mat'],'Select RF model');
+%             end
+%             % modelFileName = 'modelReducedFeatures.mat';
+%             % modelPathName = 'D:\LSP\cycif\S3\nucleiTrainingSet\'; 
+%         %#pragma treeBagger
+%             load([modelPathName modelFileName])
+% 
+%             nuclei = imread([testPath rawFileListing(1).name]);
+%             [nucleiPM,nucleiCrop]=RFSplitter(nuclei,modelNuc,'split',false);
+% 
+%         case 'unet' 
             classProbPath = p.paths.probabilitymaps;
-            listing = dir([classProbPath name '_ContoursPM*']);
-            PMfileName = listing.name;
-            pmI = strfind(PMfileName,'_ContoursPM_');
-            probMapSuffix= cellstr(PMfileName(pmI:end));
-            nucMaskChan = sscanf(char(probMapSuffix), '_ContoursPM_%d.tif');
-            if nucMaskChan >p.numChan
-                nucMaskChan = nucMaskChan - p.numChan;
-            end
-               
-            nucleiPMListing = dir([classProbPath name '_NucleiPM*']);
-            if ~isempty(nucleiPMListing)
-                PMfileName = nucleiPMListing.name;
+            PMlisting=dir([classProbPath filesep '*_Probabilities*']);
+            if numel(PMlisting)>0 % if using a single file containing all PMs
+                singleChannelPM=false;
+                PMfileName = PMlisting.name;
+                pmI = strfind(PMfileName,'_Probabilities');
+                nucMaskChan =str2num(PMfileName(strfind(PMfileName,'Probabilities')+14:strfind(PMfileName,'.tif')-1));
+                if isempty(nucMaskChan)
+                    nucMaskChan = p.NucMaskChan;
+                end
+                
+                if nucMaskChan >p.numChan
+                    nucMaskChan = nucMaskChan - p.numChan;
+                end
+                nucleiprobMapSuffix= cellstr(PMfileName(pmI:end));
+                nucleiprobMapSuffix{2}= PMfileName(pmI:end);
+                nucleiprobMapSuffix{3}= PMfileName(pmI:end);
+            else
+                singleChannelPM = true;
+                listing = dir([classProbPath name '_ContoursPM*']);
+                PMfileName = listing.name;
                 pmI = strfind(PMfileName,'_NucleiPM_');
-                probMapSuffix{2}= PMfileName(pmI:end);
+                nucleiprobMapSuffix= cellstr(PMfileName(pmI:end));
+                nucMaskChan = sscanf(char(nucleiprobMapSuffix), '_NucleiPM_%d.tif');
+                if nucMaskChan >p.numChan
+                    nucMaskChan = nucMaskChan - p.numChan;
+                end
+
+                nucleiPMListing = dir([classProbPath name '_ContoursPM*']);
+                if ~isempty(nucleiPMListing)
+                    PMfileName = nucleiPMListing.name;
+                    pmI = strfind(PMfileName,'_ContoursPM_');
+                    nucleiprobMapSuffix{2}= PMfileName(pmI:end);
+                end
+                nucleiprobMapSuffix{3}= '_backgroundPM_';
             end
             
-            cytoPMListing = dir([classProbPath name '_CytoPM*']);
-            if ~isempty(cytoPMListing)
-                PMfileName = cytoPMListing.name;
-                pmI = strfind(PMfileName,'_CytoPM_');
-                probMapSuffix{3}= PMfileName(pmI:end);
-                cytoMaskChan = sscanf(char(probMapSuffix{3}), '_CytoPM_%d.tif');
+            if isequal(p.ClassProbSource,'ilastik')
+                 nucleiprobMapSuffix{4}= PMfileName(pmI:end);
+            else
+                cytoPMListing = dir([classProbPath name '_CytoPM*']);
+                if ~isempty(cytoPMListing)
+                    PMfileName = cytoPMListing.name;
+                    pmI = strfind(PMfileName,'_CytoPM_');
+                    cytoprobMapSuffix= PMfileName(pmI:end);
+                    p.CytoMaskChan = sscanf(char(cytoprobMapSuffix), '_CytoPM_%d.tif');
+                end
             end
-            
-        case 'none'
-            classProbPath = p.paths.registration;
-            probMapSuffix= '.ome.tif';
-        
-    end 
+
+%         case 'none'
+%             classProbPath = p.paths.registration;
+%             probMapSuffix= '.ome.tif';
+%         
+%     end 
     
 
     
     
     %% read nuclei channel and crop as necessary
-        if exist([classProbPath filePrefix probMapSuffix{1}])
-            classProbInfo = imfinfo([classProbPath filePrefix probMapSuffix{1}]);
+        if exist([classProbPath filePrefix nucleiprobMapSuffix{1}])
+            classProbInfo = imfinfo([classProbPath filePrefix nucleiprobMapSuffix{1}]);
             
             switch p.crop
                 case 'interactiveCrop'
@@ -123,10 +147,6 @@ outputPath = [outputPath name];
                         load([p.paths.dearray filesep name '_cropCoords.mat'])
                         rect = [rect(1) rect(2) rect(3)-rect(1)-1 rect(4)-rect(2)-1];
                         PMrect =  [1 1 rect(3) rect(4)];
-%                         if (rect(3)+rect(1)) > fullResSize(2) || (rect(4)+rect(2)) > fullResSize(1)
-%                             rect = [1 1 fullResSize(2)-1 fullResSize(1)-1];
-%                             PMrect= rect;
-%                         end
                     else
                         rect = [1 1 rawSize(2)-1 rawSize(1)-1];
                         PMrect= rect;
@@ -141,14 +161,42 @@ outputPath = [outputPath name];
                  PMrect= rect;
             end
 
+            %read nucleiPMs and cytoPM (if any)
             nucleiPM=[];
-             for iPM = 1:numel(probMapSuffix)
-                nucleiProbMaps = imread([classProbPath filePrefix probMapSuffix{iPM}],1);
-                PMSize = size(nucleiProbMaps);
-                nucleiProbMaps = imresize(nucleiProbMaps,fullResSize);
-                nucleiPM(:,:,iPM) = imcrop(nucleiProbMaps,PMrect);
+            cytoPM=[];
+            if singleChannelPM==true
+                 for iPM = 1:numel(nucleiprobMapSuffix)
+                    nucleiProbMaps = imread([classProbPath filePrefix nucleiprobMapSuffix{iPM}],1);
+                    PMSize = size(nucleiProbMaps);
+                    nucleiProbMaps = imresize(nucleiProbMaps,fullResSize);
+                    nucleiPM(:,:,iPM) = imcrop(nucleiProbMaps,PMrect);
+                 end
+                    cytoProbMaps = imread([classProbPath filePrefix nucleiprobMapSuffix],1);
+                    PMSize = size(cytoProbMaps);
+                    cytoProbMaps = imresize(cytoProbMaps,fullResSize);
+                    nucleiPM(:,:,4) = imcrop(cytoProbMaps,PMrect);
+                    del cytoProbMaps
+                 
+            else
+                nucleiProbMaps = imread([classProbPath filePrefix nucleiprobMapSuffix{1}]);
+                if isequal(p.ClassProbSource,'unet') || isequal(p.ClassProbSource,'ilastik')
+                    if exist('cytoprobMapSuffix','var')==1 
+                        nucleiProbMaps =cat(3,nucleiProbMaps,imread([classProbPath filePrefix cytoprobMapSuffix]));
+                    end
+                    if numel(nucleiprobMapSuffix)==4
+                        nucleiProbMaps =cat(3,nucleiProbMaps,nucleiProbMaps(:,:,p.probMapOrder(4)));
+                    end
+                end
+                    for iPM = 1:size(nucleiProbMaps,3)
+                        nucleiPM(:,:,iPM) = imcrop(imresize(nucleiProbMaps(:,:,iPM),fullResSize),PMrect);
+                    end
                 
-             end
+                    PMSize = size(nucleiProbMaps);
+            end
+            
+            
+            
+             
              PMUpsampleFactor = fullResSize(1)/PMSize(1);
         else
             disp([filePrefix contourprobMapSuffix ' not found'])
@@ -158,7 +206,7 @@ p.rect= rect;
 
 %% mask the core/tissue
 if isempty(p.TissueMaskChan)
-    p.TissueMaskChan = [nucMaskChan];
+    p.TissueMaskChan = [nucMaskChan p.CytoMaskChan];
 end
 
 if isequal(p.crop,'dearray')
@@ -246,42 +294,35 @@ clear nuclei
     %% cytoplasm segmentation
    switch p.segmentCytoplasm
        case 'segmentCytoplasm'
-            if p.CytoMaskChan == 0
-                p.cytoPM = nucleiPM(:,:,3);
-                p.CytoMaskChan = cytoMaskChan;
+            if (isequal(p.ClassProbSource,'ilastik') || isequal(p.ClassProbSource,'unet')) && size(nucleiPM,3)>3 %use cytoPM
+                    p.cytoPM = nucleiPM(:,:,4);
+                    cyto = nucleiPM(:,:,4);
+                    if isequal(p.ClassProbSource,'ilastik')
+                        TMAmask = nucleiPM(:,:,3)<thresholdOtsu(nucleiPM(:,:,3));
+                    end
             else 
                 p.cytoPM=[];
-            end
-            
-            cyto =[];
-            for iChan = p.CytoMaskChan
-                if isequal(p.crop,'noCrop')
-                   cyto= cat(3,cyto,normI(imresize(double(imread([imagePath rawFileListing(1).name],iChan)),p.resizeFactor)));
-                elseif isequal(p.crop,'dearray')
-                    cyto= cat(3,cyto,normI(imresize(double(imread([p.paths.dearray filesep fileName],iChan)),p.resizeFactor)));
-                else
-                    cyto= cat(3,cyto,normI(double(imread([imagePath rawFileListing(1).name],iChan,'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}))));
+                cyto =[];
+                for iChan = p.CytoMaskChan
+                    if isequal(p.crop,'noCrop')
+                       cyto= cat(3,cyto,normI(imresize(double(imread([imagePath rawFileListing(1).name],iChan)),p.resizeFactor)));
+                    elseif isequal(p.crop,'dearray')
+                        cyto= cat(3,cyto,normI(imresize(double(imread([p.paths.dearray filesep fileName],iChan)),p.resizeFactor)));
+                    else
+                        cyto= cat(3,cyto,normI(double(imread([imagePath rawFileListing(1).name],iChan,'PixelRegion',{[rect(2),rect(2)+rect(4)],[rect(1),rect(1)+rect(3)]}))));
+                    end
                 end
+                cyto=max(cyto,[],3);
             end
-            cyto=max(cyto,[],3);
-           
-            % load random forest model if 
-            if isequal(p.cytoMethod,'RF')
-                %#pragma treeBagger
-                load('D:\LSP\cycif\S3\cytoTrainingSet\modelContours1.mat')
-            else
-            modelCat=[];
-            end
-%             cyto=S3tileReturn(cyto);
-%             tissue = S3tileReturn(tissue);
-            [cytoplasmMask,nucleiMaskTemp,cellMask]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
+
+            [cytoplasmMask,nucleiMaskTemp,cellMask]=S3CytoplasmSegmentation(nucleiMask,cyto,'mask',TMAmask,...
                 'cytoMethod',p.cytoMethod,'resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,...
                 'cytoDilation',p.cytoDilation,'cytoPM',p.cytoPM);
             exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,'nuclei',p.saveFig,p.saveMasks)
             exportMasks(cytoplasmMask,cyto,outputPath,'cyto',p.saveFig,p.saveMasks)
             exportMasks(cellMask,cyto,outputPath,'cell',p.saveFig,p.saveMasks)
             
-            [cytoplasmMaskRing,nucleiMaskRing,cellMaskRing]=S3CytoplasmSegmentation(nucleiMask,cyto,modelCat,'mask',TMAmask,...
+            [cytoplasmMaskRing,nucleiMaskRing,cellMaskRing]=S3CytoplasmSegmentation(nucleiMask,cyto,'mask',TMAmask,...
                 'cytoMethod','ring','resize',1,'sizeFilter',largestNucleiArea,'upSample',p.upSample,...
                 'cytoDilation',p.cytoDilation,'cytoPM',p.cytoPM);
             exportMasks(nucleiMaskRing,nucleiCrop,outputPath,'nucleiRing',p.saveFig,p.saveMasks)
