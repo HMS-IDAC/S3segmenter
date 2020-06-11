@@ -212,7 +212,7 @@ if __name__ == '__main__':
     parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation'], default = 'watershedContourInt')
     parser.add_argument("--segmentCytoplasm",choices = ['segmentCytoplasm','ignoreCytoplasm'],default = 'ignoreCytoplasm')
     parser.add_argument("--cytoDilation",type = int, default = 5)
-    parser.add_argument("--logSigma",type = int, nargs = '+', default = [3, 30])
+    parser.add_argument("--logSigma",type = int, nargs = '+', default = [3, 60])
     parser.add_argument("--CytoMaskChan",type=int, nargs = '+', default=[1])
     parser.add_argument("--TissueMaskChan",type=int, nargs = '+', default=-1)
     parser.add_argument("--saveMask",action='store_false')
@@ -361,7 +361,7 @@ if __name__ == '__main__':
         exportMasks(cellMask,cyto,outputPath,filePrefix,'cell',args.saveFig,args.saveMask)
   
         cytoplasmMask,nucleiMaskTemp,cellMask = S3CytoplasmSegmentation(nucleiMask,cyto,TMAmask,'ring',args.cytoDilation)
-        exportMasks(nucleiMask,nucleiCrop,outputPath,filePrefix,'nucleiRing',args.saveFig,args.saveMask)
+        exportMasks(nucleiMaskTemp,nucleiCrop,outputPath,filePrefix,'nucleiRing',args.saveFig,args.saveMask)
         exportMasks(cytoplasmMask,cyto,outputPath,filePrefix,'cytoRing',args.saveFig,args.saveMask)
         exportMasks(cellMask,cyto,outputPath,filePrefix,'cellRing',args.saveFig,args.saveMask)
         
