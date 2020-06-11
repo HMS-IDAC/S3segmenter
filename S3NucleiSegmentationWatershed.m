@@ -1,7 +1,7 @@
 function [nucleiMask,largestNucleusArea] = S3NucleiSegmentationWatershed(NucleiPM,nucleiImage,logSigma,varargin)
 
 ip = inputParser;
-ip.addParamValue('nucleiRegion','watershedContourInt',@(x)(ismember(x,{'watershedContourDist','watershedContourInt','watershedBWDist','dilation'})));
+ip.addParamValue('nucleiRegion','watershedContourInt',@(x)(ismember(x,{'watershedContourDist','watershedContourInt','watershedBWDist','localThreshold'})));
 ip.addParamValue('useGPUArray','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('inferNucCenters','UNet',@(x)(ismember(x,{'UNet','RF','Int'})));
 ip.addParamValue('resize',1,@(x)(numel(x) == 1 & all(x > 0 ))); 
@@ -14,11 +14,11 @@ p = ip.Results;
 
 %% preprocess
 if size(NucleiPM,3)>2
-    nucleiCentersResized = imresize(NucleiPM(:,:,1),p.resize);
-    nucleiContoursResized = imresize(NucleiPM(:,:,2),p.resize);
-else
+    nucleiCentersResized = imresize(NucleiPM(:,:,2),p.resize);
     nucleiContoursResized = imresize(NucleiPM(:,:,1),p.resize);
-    nucleiCentersResized = max(nucleiContoursResized(:))-nucleiContoursResized;
+else
+    nucleiCentersResized = imresize(NucleiPM(:,:,1),p.resize);
+    nucleiContoursResized = max(nucleiCentersResized(:))-nucleiCentersResized;
 end
 
 if ~isequal(p.resize,1)
@@ -57,24 +57,16 @@ end
 %     end
     
    %% markers based on log filter on classProbs 3
-     if isequal(p.useGPUArray,'true')
-      logfgm=  imregionalmax(gather(imgaussfilt3(gpuArray(filterLoG(nucleiContoursResized,logSigma)),2))); %3.5, 2
-     else
-        if numel(logSigma)==1
-         nucleiDiameter  = [logSigma*0.5 logSigma*1.5];
-        else
-         nucleiDiameter = logSigma;
-        end
+if numel(logSigma)==1
+    nucleiDiameter  = [logSigma*0.5 logSigma*1.5];
+else
+    nucleiDiameter = logSigma;
+end
 %         numLoGScales = ceil((nucleiDiameter(2)-nucleiDiameter(1))/3);
 %         logmask = (nucleiImageResized>thresholdMinimumError(nucleiImageResized,'model','poisson'));
-        logmask = nucleiCentersResized>0.6*max(nucleiCentersResized(:));
-        [logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(max(nucleiContoursResized(:)) - nucleiContoursResized,logmask,'globalThreshold',nucleiDiameter(2),nucleiImageResized);
-     end
-%      figure,imshowpair(logfgm,nucleiCentersResized)
-%         logfgm=logfgm.*p.mask;
-%         masktest=(nucleiCentersResized+nucleiContoursResized)>thresholdOtsu(nucleiCentersResized+nucleiContoursResized);
-%         bg=(1-masktest).*p.mask;
-%         bg = imerode(bg,strel('disk',3));
+logmask = nucleiCentersResized>0.6*max(nucleiCentersResized(:));
+[logfgm,centers] = filterMultiScaleMultiDirDConstrLoG(max(nucleiContoursResized(:)) - nucleiContoursResized,logmask,'globalThreshold',nucleiDiameter(2),nucleiImageResized);
+
 %% apply watershed transform
 switch p.nucleiRegion 
     case 'watershedContourInt'
@@ -101,6 +93,15 @@ switch p.nucleiRegion
     foreground =nucleiCentersResized>thresholdMinimumError(nucleiCentersResized,'model','poisson');
     foregroundMask = foregroundMask.*cast(foreground,class(foregroundMask));
 %     logfgm = (logfgm.*foregroundMask)>0; 
+
+    case 'localThreshold'
+    fgMask=imbinarize(uint8(nucleiCentersResized),adaptthresh(uint8(nucleiCentersResized),0.7,'NeighborHoodSize',75));
+    IDist = -bwdist(~fgMask);
+    logfgm = imregionalmin(imhmin(IDist,9));
+    cytograd= imimposemin(IDist,logfgm);
+    foregroundMask=watershed(cytograd);
+    foregroundMask = foregroundMask.*cast(fgMask,class(foregroundMask));
+    
  end
 
     %% process mask

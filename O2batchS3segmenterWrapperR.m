@@ -1,6 +1,6 @@
 function O2batchS3segmenterWrapperR(mainPath,varargin)
 
-
+%added crop plate , and nucleiRegion localthreshold for Dan
 ip = inputParser;
 ip.addParamValue('HPC','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('fileNum',1,@(x)(numel(x) > 0 & all(x > 0 )));  
@@ -11,7 +11,7 @@ ip.addParamValue('TissueMaskChan',[],@(x)(isnumeric(x)));
 ip.addParamValue('RefineTissueMask',[0],@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('cytoDilation',5,@(x)(numel(x) > 0 & all(x > 0 ))); 
 ip.addParamValue('mask','tissue',@(x)(ismember(x,{'TMA','tissue','none'}))); % set to true if sample is TMA cores
-ip.addParamValue('crop','noCrop',@(x)(ismember(x,{'interactiveCrop','autoCrop','dearray','noCrop'})));
+ip.addParamValue('crop','noCrop',@(x)(ismember(x,{'interactiveCrop','autoCrop','dearray','plate','noCrop'})));
 ip.addParamValue('cytoMethod','distanceTransform',@(x)(ismember(x,{'hybrid','ilastik','distanceTransform','bwdistanceTransform','ring','UNet'})));
 ip.addParamValue('MedianIntensity','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('saveFig','true',@(x)(ismember(x,{'true','false'})));
@@ -19,7 +19,7 @@ ip.addParamValue('saveMasks','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('segmentNucleus','true',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('nucleiFilter','IntPM',@(x)(ismember(x,{'LoG','Int','IntPM','none'})));
 ip.addParamValue('measureFeatures','false',@(x)(ismember(x,{'true','false'})));
-ip.addParamValue('nucleiRegion','watershedContourInt',@(x)(ismember(x,{'watershedContourDist','watershedContourInt','watershedBWDist','dilation'})));
+ip.addParamValue('nucleiRegion','watershedContourInt',@(x)(ismember(x,{'watershedContourDist','watershedContourInt','watershedBWDist','localThreshold'})));
 ip.addParamValue('segmentCytoplasm','segmentCytoplasm',@(x)(ismember(x,{'segmentCytoplasm','loadMask','ignoreCytoplasm'})));
 ip.addParamValue('useGPUArray','false',@(x)(ismember(x,{'true','false'})));
 ip.addParamValue('inferNucCenters','UNet',@(x)(ismember(x,{'UNet','RF','Int'})));
@@ -52,10 +52,10 @@ end
 paths.metadata = ['metadata' ];
 paths.dearray = ['dearray' ];
 if isequal(p.ClassProbSource,'ilastik')
-    paths.probabilitymaps= ['prob_maps_ilastik'];
+    paths.probabilitymaps= ['probability_maps_ilastik'];
     p.probMapOrder = [1 2 3 2];
 else
-    paths.probabilitymaps= ['prob_maps'];
+    paths.probabilitymaps= ['probability_maps'];
     p.probMapOrder = [1 2 3 4];
 end
 paths.segmentation = ['segmentation'];

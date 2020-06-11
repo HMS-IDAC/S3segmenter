@@ -153,7 +153,13 @@ outputPath = [outputPath name];
                     end
                     nucleiCrop = imread([imagePath rawFileListing(1).name],nucMaskChan,'PixelRegion',{[rect(2) rect(2)+rect(4)], [rect(1) rect(1)+rect(3)]});
                     fullResSize = size(nucleiCrop);
-                case 'noCrop'
+                case 'noCrop' 
+                 nucleiCrop = imread([imagePath rawFileListing(1).name],nucMaskChan);
+                 fullResSize = size(nucleiCrop);
+                 nucleiCrop = imresize(nucleiCrop,p.resizeFactor);
+                 rect = round([1 1 size(nucleiCrop,2) size(nucleiCrop,1)]);
+                 PMrect= rect;
+                 case 'plate' 
                  nucleiCrop = imread([imagePath rawFileListing(1).name],nucMaskChan);
                  fullResSize = size(nucleiCrop);
                  nucleiCrop = imresize(nucleiCrop,p.resizeFactor);
@@ -215,6 +221,9 @@ if isequal(p.crop,'dearray')
     else
         TMAmask = coreSegmenterFigOutput(max(tissue,[],3),'activeContours','true','split','false');
     end
+elseif isequal(p.crop,'plate')
+    TMAmask = ones(size(nucleiCrop));
+    
 else
     tissue =[];
     if isequal(p.crop,'noCrop')
@@ -349,7 +358,7 @@ clear nuclei
    end
    disp(['Segmented Cytoplasm'])
   
- clear nucleiPM
+%  clear nucleiPM
  
   %% detect puncta
 if (min(p.detectPuncta)>0) && (numel(p.detectPuncta) <= p.numChan)
