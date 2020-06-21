@@ -57,10 +57,10 @@ def normI(I):
 def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegion):
     nucleiContours = nucleiPM[:,:,1]
     nucleiCenters = nucleiPM[:,:,0]
-    nucleiContours = nucleiContours*TMAmask
+    
     del nucleiPM
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
- 
+    nucleiContours = nucleiContours*mask
     if len(logSigma)==1:
          nucleiDiameter  = [logSigma*0.5, logSigma*1.5]
     else:
@@ -149,7 +149,8 @@ def S3CytoplasmSegmentation(nucleiMask,cyto,mask,cytoMethod='distanceTransform',
         mask = np.ones(nucleiMask.shape)
         del bg
     elif cytoMethod == 'ring':
-        mask =np.array(bwmorph(nucleiMask,radius)*mask,dtype=np.uint32)>0
+#        mask =np.array(bwmorph(nucleiMask,radius)*mask,dtype=np.uint32)>0
+        mask =np.array(bwmorph(nucleiMask,radius),dtype=np.uint32)>0
         markers= nucleiMask
     
     cellMask  =clear_border(watershed(gdist,markers,watershed_line=True))
@@ -229,6 +230,18 @@ if __name__ == '__main__':
 #    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probmaps/exemplar-001_Probabilities_1.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.cytoMethod = 'hybrid'
+	
+	    #exemplar002
+#    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/1.tif'
+#    outputPath = 'D:/LSP/cycif/testsets/exemplar-002/segmentation'
+#    nucleiClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_NucleiPM_1.tif'
+#    contoursClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_ContoursPM_1.tif'
+#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-002/probability-maps/1_Probabilities_1.tif'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/masks/1_mask.tif'
+#    args.cytoMethod = 'hybrid'
+#    args.mask = 'TMA'
+#    args.crop = 'dearray'
+	
 	
 	#plate 
 #    imagePath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/registration/E3_fld_1.ome.tif'
