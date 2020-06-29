@@ -60,7 +60,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
     del nucleiPM
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
-    nucleiContours = nucleiContours*mask
+    # nucleiContours = nucleiContours*mask
     if len(logSigma)==1:
          nucleiDiameter  = [logSigma*0.5, logSigma*1.5]
     else:
@@ -70,10 +70,10 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     gf= extrema.h_maxima(gf,logSigma[1]/30)
     fgm=peak_local_max(gf, indices=False,footprint=np.ones((3, 3)))
     _, fgm= cv2.connectedComponents(fgm.astype(np.uint8))
-    foregroundMask= morphology.watershed(nucleiContours,fgm,watershed_line=True)
+    allNuclei= morphology.watershed(nucleiContours,fgm,watershed_line=True, mask=mask)
     del fgm
-    allNuclei = ((foregroundMask)*mask)
-    del foregroundMask
+    # allNuclei = ((foregroundMask)*mask)
+    # del foregroundMask
     if nucleiFilter == 'IntPM':
         P = regionprops(allNuclei,nucleiCenters,cache=False)
     elif nucleiFilter == 'Int':
