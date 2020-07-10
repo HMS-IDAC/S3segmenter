@@ -14,7 +14,7 @@ from skimage.filters import threshold_otsu
 from skimage.filters import gaussian
 from skimage.feature import peak_local_max
 from skimage.color import label2rgb
-from skimage.io import imsave
+from skimage.io import imsave, imread
 from skimage.segmentation import clear_border
 from scipy.ndimage.filters import uniform_filter
 from os.path import *
@@ -313,11 +313,9 @@ if __name__ == '__main__':
         PMSize = nucleiProbMaps.shape
         nucleiPM = np.dstack((nucleiPM,nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]))
     else:
-        nucleiProbMaps = tifffile.imread(stackProbPath,key=0)
-        nucleiPM = nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
-        nucleiProbMaps = tifffile.imread(stackProbPath,key=1)
+        nucleiProbMaps = imread(stackProbPath)
+        nucleiPM = nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3]),0:2]
         PMSize = nucleiProbMaps.shape
-        nucleiPM = np.dstack((nucleiPM,nucleiProbMaps[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]))
 
     # mask the core/tissue
     if args.crop == 'dearray':
