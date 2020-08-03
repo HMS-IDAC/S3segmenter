@@ -10,8 +10,7 @@ from skimage.morphology import extrema
 from skimage import morphology
 from skimage.measure import regionprops
 from skimage.transform import resize
-from skimage.filters import threshold_otsu
-from skimage.filters import gaussian
+from skimage.filters import gaussian, threshold_otsu, threshold_local
 from skimage.feature import peak_local_max
 from skimage.color import label2rgb
 from skimage.io import imsave, imread
@@ -57,7 +56,6 @@ def normI(I):
 def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegion):
     nucleiContours = nucleiPM[:,:,1]
     nucleiCenters = nucleiPM[:,:,0]
-    
     del nucleiPM
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
     nucleiContours = nucleiContours*mask
@@ -66,12 +64,21 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     else:
          nucleiDiameter = logSigma
     logMask = nucleiCenters > 150
-    gf=gaussian_filter(255-nucleiContours,logSigma[1]/30)
-    gf= extrema.h_maxima(gf,logSigma[1]/30)
-    fgm=peak_local_max(gf, indices=False,footprint=np.ones((3, 3)))
-    _, fgm= cv2.connectedComponents(fgm.astype(np.uint8))
-    foregroundMask= morphology.watershed(nucleiContours,fgm,watershed_line=True)
-    del fgm
+    
+    if nucleiRegion == 'localThreshold':
+        fgMask = nucleiCenters>threshold_local(nucleiCenters,nucleiDiameter[1]+1)
+#        IDist = -distance_transform_edt(1-fgMask)
+#        logfgm = extrema.h_minima(IDist,nucleiDiameter[0])
+#        foregroundMask = morphology.watershed(IDist,logfgm,watershed_line=True)
+        foregroundMask = fgMask
+    else:
+        gf=gaussian_filter(255-nucleiContours,logSigma[1]/30)
+        gf= extrema.h_maxima(gf,logSigma[1]/30)
+        fgm=peak_local_max(gf, indices=False,footprint=np.ones((3, 3)))
+        _, fgm= cv2.connectedComponents(fgm.astype(np.uint8))
+        foregroundMask= morphology.watershed(nucleiContours,fgm,watershed_line=True)
+        del fgm
+    
     allNuclei = ((foregroundMask)*mask)
     del foregroundMask
     if nucleiFilter == 'IntPM':
@@ -244,10 +251,9 @@ if __name__ == '__main__':
 #    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probmaps/exemplar-001_Probabilities_1.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.cytoMethod = 'hybrid'
-#    args.crop = 'autoCrop'
-#    args.segmentCytoplasm = 'segmentCytoplasm'
+
 	
-	    #exemplar002
+#	    exemplar002
 #    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/1.tif'
 #    outputPath = 'D:/LSP/cycif/testsets/exemplar-002/segmentation'
 #    nucleiClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_NucleiPM_1.tif'
@@ -257,22 +263,26 @@ if __name__ == '__main__':
 #    args.cytoMethod = 'hybrid'
 #    args.mask = 'TMA'
 #    args.crop = 'dearray'
+#    args.crop = 'autoCrop'
+#    args.segmentCytoplasm = 'segmentCytoplasm'
+        
 	
 	    #punctatest
-    imagePath = 'D:/Seidman/ZeissTest Sets/registration/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1.ome.tif'
-    outputPath = 'D:/Seidman/ZeissTest Sets/segmentation'
-    nucleiClassProbPath = 'D:/Seidman/ZeissTest Sets/probability-maps/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1_NucleiPM_1.tif'
-    contoursClassProbPath = 'D:\Seidman\ZeissTest Sets\probability-maps/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1_ContoursPM_1.tif'
+#    imagePath = 'D:/Olesja/OP102_liver/registration/OP102_liver_DAPI_anti-GFP_01.btf'
+#    outputPath = 'D:/Olesja/OP102_liver/segmentation'
+#    nucleiClassProbPath = 'D:/Seidman/ZeissTest Sets/probability-maps/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1_NucleiPM_1.tif'
+#    contoursClassProbPath = 'D:\Seidman\ZeissTest Sets\probability-maps/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1_ContoursPM_1.tif'
 #    contoursClassProbPath =''
-#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_Probabilities_1.tif'
-    maskPath = 'D:/Seidman/ZeissTest Sets/segmentation/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1/cellMask.tif'
-    args.nucleiRegion = 'localThresh'
-    args.crop = 'plate'
-    args.logSigma = [6, 300]
-    args.segmentCytoplasm = 'ignoreCytoplasm'
-    args.detectPuncta = [0,1]
-    args.punctaSigma = [1]
-    args.punctaSD = [10]
+#    stackProbPath = 'D:/Olesja/OP102_liver/probability-maps/unmicst/OP102_liver_DAPI_anti-GFP_01_Probabilities_1.tif'
+#    maskPath = 'D:/Seidman/ZeissTest Sets/segmentation/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1/cellMask.tif'
+#    args.nucleiRegion = 'localThresh'
+#    args.crop = 'autoCrop'
+#    args.logSigma = [30, 300]
+#    args.segmentCytoplasm = 'ignoreCytoplasm'
+#    args.detectPuncta = [0,1]
+#    args.punctaSigma = [1]
+#    args.punctaSD = [10]
+    
     
 	#plate 
 #    imagePath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/registration/E3_fld_1.ome.tif'
@@ -291,12 +301,12 @@ if __name__ == '__main__':
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.crop = 'interactiveCrop'
     
-#    imagePath = args.imagePath
-#    outputPath = args.outputPath
-#    nucleiClassProbPath = args.nucleiClassProbPath
-#    contoursClassProbPath = args.contoursClassProbPath
-#    stackProbPath = args.stackProbPath
-#    maskPath = args.maskPath
+    imagePath = args.imagePath
+    outputPath = args.outputPath
+    nucleiClassProbPath = args.nucleiClassProbPath
+    contoursClassProbPath = args.contoursClassProbPath
+    stackProbPath = args.stackProbPath
+    maskPath = args.maskPath
        
     fileName = os.path.basename(imagePath)
     filePrefix = fileName[0:fileName.index('.')]
