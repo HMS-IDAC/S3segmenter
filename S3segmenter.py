@@ -254,12 +254,13 @@ if __name__ == '__main__':
 
 	
 #	    exemplar002
-#    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/1.tif'
+#    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/1.tif'
 #    outputPath = 'D:/LSP/cycif/testsets/exemplar-002/segmentation'
 #    nucleiClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_NucleiPM_1.tif'
 #    contoursClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_ContoursPM_1.tif'
-#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-002/probability-maps/1_Probabilities_1.tif'
+#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-002/probability-maps/unmicst_1new_Probabilities_1.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/masks/1_mask.tif'
+#    args.probMapChan =1
 #    args.cytoMethod = 'hybrid'
 #    args.mask = 'TMA'
 #    args.crop = 'dearray'
@@ -294,12 +295,14 @@ if __name__ == '__main__':
 #    args.cytoMethod ='hybrid'
         
     #large tissue
-#    imagePath =  'Y:/sorger/data/RareCyte/Zoltan/Z174_lung/stitched/7.ome.tif'
-#    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
+#    imagePath =  'D:/WD-76845-097.ome.tif'
+#    outputPath = 'D:/'
 #    nucleiClassProbPath = 'Y:/sorger/data/RareCyte/Zoltan/Z174_lung/unmist/7_NucleiPM_46.tif'
-#    contoursClassProbPath = 'Y:/sorger/data/RareCyte/Zoltan/Z174_lung/unmist/7_ContoursPM_46.tif'
+#    contoursClassProbPath = ''
+#    stackProbPath = 'D:/ilastik/WD-76845-097_Probabilities.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    args.crop = 'interactiveCrop'
+#    args.crop = 'autoCrop'
+#    args.probMapChan = 24
     
     imagePath = args.imagePath
     outputPath = args.outputPath
@@ -312,18 +315,26 @@ if __name__ == '__main__':
     filePrefix = fileName[0:fileName.index('.')]
     
     # get channel used for nuclei segmentation
-    if args.probMapChan==-1:
-        if len(contoursClassProbPath)>0:
-            legacyMode = 1
-            probPrefix = os.path.basename(contoursClassProbPath)
-            nucMaskChan = int(probPrefix.split('ContoursPM_')[1].split('.')[0])-1
-        elif len(stackProbPath)>0:
-            legacyMode = 0
-            probPrefix = os.path.basename(stackProbPath)
-            nucMaskChan = int(probPrefix.split('Probabilities_')[1].split('.')[0])-1
+
+    if len(contoursClassProbPath)>0:
+        legacyMode = 1
+        probPrefix = os.path.basename(contoursClassProbPath)
+        nucMaskChan = int(probPrefix.split('ContoursPM_')[1].split('.')[0])-1
+    elif len(stackProbPath)>0:
+        legacyMode = 0
+        probPrefix = os.path.basename(stackProbPath)
+        index = re.search('%s(.*)%s' % ('Probabilities', '.tif'), stackProbPath).group(1)
+        if len(index)==0:
+            nucMaskChan = args.probMapChan
         else:
-            print('NO PROBABILITY MAP PROVIDED')
-        
+            nucMaskChan  = int(re.sub("\D", "", index))-1
+    else:
+        print('NO PROBABILITY MAP PROVIDED')
+    if args.probMapChan ==-1:
+        if nucMaskChan ==-1:
+            sys.exit('INVALID NUCLEI CHANNEL SELECTION. SELECT CHANNEL USING --probMapChan')
+        else:
+            print('extracting nuclei channel from filename')
     else:
         nucMaskChan = args.probMapChan
 
