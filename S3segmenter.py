@@ -13,8 +13,8 @@ from skimage.transform import resize
 from skimage.filters import gaussian, threshold_otsu, threshold_local
 from skimage.feature import peak_local_max
 from skimage.color import label2rgb
-from skimage.io import imsave, imread
-from skimage.segmentation import clear_border
+from skimage.io import imsave
+from skimage.segmentation import clear_border, watershed
 from scipy.ndimage.filters import uniform_filter
 from os.path import *
 from os import listdir, makedirs, remove
@@ -27,6 +27,9 @@ import sys
 import argparse
 import re
 import copy
+import datetime
+from joblib import Parallel, delayed
+from rowit import WindowView, crop_with_padding_mask
 
 
 def imshowpair(A,B):
@@ -53,72 +56,120 @@ def normI(I):
     J = J/(p99-p1);
     return J
 
+def contour_pm_watershed(
+    contour_pm, sigma=2, h=0, tissue_mask=None,
+    padding_mask=None, min_area=None, max_area=None
+):
+    if tissue_mask is None:
+        tissue_mask = np.ones_like(contour_pm)
+    padded = None
+    if padding_mask is not None and np.any(padding_mask == 0):
+        contour_pm, padded = crop_with_padding_mask(
+            contour_pm, padding_mask, return_mask=True
+        )
+        tissue_mask = crop_with_padding_mask(
+            tissue_mask, padding_mask
+        )
+    
+    maxima = peak_local_max(
+        extrema.h_maxima(
+            ndi.gaussian_filter(np.invert(contour_pm), sigma=sigma),
+            h=h
+        ),
+        indices=False,
+        footprint=np.ones((3, 3))
+    )
+    maxima = label(maxima).astype(np.int32)
+    
+    # Passing mask into the watershed function will exclude seeds outside
+    # of the mask, which gives fewer and more accurate segments
+    maxima = watershed(
+        contour_pm, maxima, watershed_line=True, mask=tissue_mask
+    ) > 0
+    
+    if min_area is not None and max_area is not None:
+        maxima = label(maxima, connectivity=1).astype(np.int32)
+        areas = np.bincount(maxima.ravel())
+        size_passed = np.arange(areas.size)[
+            np.logical_and(areas > min_area, areas < max_area)
+        ]
+        maxima *= np.isin(maxima, size_passed)
+        np.greater(maxima, 0, out=maxima)
+
+    if padded is None:
+        return maxima.astype(np.bool)
+    else:
+        padded[padded == 1] = maxima.flatten()
+        return padded.astype(np.bool)
+
 def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegion):
     nucleiContours = nucleiPM[:,:,1]
     nucleiCenters = nucleiPM[:,:,0]
-    del nucleiPM
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
-    nucleiContours = nucleiContours*mask
+ 
     if len(logSigma)==1:
          nucleiDiameter  = [logSigma*0.5, logSigma*1.5]
     else:
          nucleiDiameter = logSigma
     logMask = nucleiCenters > 150
     
-    if nucleiRegion == 'localThreshold':
-        fgMask = nucleiCenters>threshold_local(nucleiCenters,nucleiDiameter[1]+1)
-#        IDist = -distance_transform_edt(1-fgMask)
-#        logfgm = extrema.h_minima(IDist,nucleiDiameter[0])
-#        foregroundMask = morphology.watershed(IDist,logfgm,watershed_line=True)
-        foregroundMask = fgMask
-    else:
-        gf=gaussian_filter(255-nucleiContours,logSigma[1]/30)
-        gf= extrema.h_maxima(gf,logSigma[1]/30)
-        fgm=peak_local_max(gf, indices=False,footprint=np.ones((3, 3)))
-        _, fgm= cv2.connectedComponents(fgm.astype(np.uint8))
-        foregroundMask= morphology.watershed(nucleiContours,fgm,watershed_line=True)
-        del fgm
-    
-    allNuclei = ((foregroundMask)*mask)
-    del foregroundMask
-    if nucleiFilter == 'IntPM':
-        P = regionprops(allNuclei,nucleiCenters,cache=False)
-    elif nucleiFilter == 'Int':
-        P = regionprops(allNuclei,nucleiImage,cache=False)
-    mean_int = np.array([prop.mean_intensity for prop in P]) 
-    #kmeans = KMeans(n_clusters=2).fit(mean_int.reshape(-1,1))
-    MITh = threshold_otsu(mean_int.reshape(-1,1))
-    allNuclei = np.zeros(mask.shape,dtype=np.uint32)
-    count = 0
-    del nucleiImage
-    
-    for props in P:
-        intensity = props.mean_intensity
-        if intensity >MITh:
-            count += 1
-            yi = props.coords[:, 0]
-            xi = props.coords[:, 1]
-            allNuclei[yi, xi] = count
-    
-    P = regionprops(allNuclei,cache=False)
-    count=0
+    win_view_setting = WindowView(nucleiContours.shape, 2000, 500)
+
+    nucleiContours = win_view_setting.window_view_list(nucleiContours)
+    padding_mask = win_view_setting.padding_mask()
+    mask = win_view_setting.window_view_list(mask)
+
     maxArea = (logSigma[1]**2)*3/4
     minArea = (logSigma[0]**2)*3/4
-    nucleiMask = np.zeros(mask.shape,dtype=np.uint32)
-    for props in P:
-        area = props.area
-        solidity = props.solidity
-        if minArea < area < maxArea and solidity >0.8:
-            count += 1
-            yi = props.coords[:, 0]
-            xi = props.coords[:, 1]
-            nucleiMask[yi, xi] = count
-    return nucleiMask
-    
-#    img2 = nucleiImage.copy()
-#    stacked_img = np.stack((img2,)*3, axis=-1)
-#    stacked_img[X > 0] = [65535, 0, 0]
-#    imshowpair(img2,stacked_img)
+
+    foregroundMask = np.array(
+        Parallel(n_jobs=6)(delayed(contour_pm_watershed)(
+            img, sigma=logSigma[1]/30, h=logSigma[1]/30, tissue_mask=tm,
+            padding_mask=m, min_area=minArea, max_area=maxArea
+        ) for img, tm, m in zip(nucleiContours, mask, padding_mask))
+    )
+
+    del nucleiContours, mask
+
+    foregroundMask = win_view_setting.reconstruct(foregroundMask)
+    foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
+
+    if nucleiFilter == 'IntPM':
+        int_img = nucleiCenters
+    elif nucleiFilter == 'Int':
+        int_img = nucleiImage
+
+    print('    ', datetime.datetime.now(), 'regionprops')
+    P = regionprops(foregroundMask, int_img)
+
+    def props_of_keys(prop, keys):
+        return [prop[k] for k in keys]
+
+    prop_keys = ['mean_intensity', 'area', 'solidity', 'label']
+    mean_ints, areas, solidities, labels = np.array(
+        Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+            for prop in P
+        )
+    ).T
+    del P
+
+    MITh = threshold_otsu(mean_ints)
+
+    minSolidity = 0.8
+
+    passed = np.logical_and.reduce((
+        np.greater(mean_ints, MITh),
+        np.logical_and(areas > minArea, areas < maxArea),
+        np.greater(solidities, minSolidity)
+    ))
+
+    # set failed mask label to zero
+    foregroundMask *= np.isin(foregroundMask, labels[passed])
+
+    np.greater(foregroundMask, 0, out=foregroundMask)
+    foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
+
+    return foregroundMask
 
 def bwmorph(mask,radius):
     mask = np.array(mask,dtype=np.uint8)
@@ -190,7 +241,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
         kwargs['resolution'] = (resolution, resolution, 'cm')
         kwargs['metadata'] = None
         kwargs['description'] = '!!xml!!'
-        imsave(outputPath + os.path.sep + fileName + 'Mask.tif',mask, plugin="tifffile")
+        imsave(outputPath + os.path.sep + fileName + 'Mask.tif',mask, plugin="tifffile", check_contrast=False)
         
     if saveFig== True:
         mask=np.uint8(mask>0)
