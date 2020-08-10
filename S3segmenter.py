@@ -13,7 +13,7 @@ from skimage.transform import resize
 from skimage.filters import gaussian, threshold_otsu, threshold_local
 from skimage.feature import peak_local_max
 from skimage.color import label2rgb
-from skimage.io import imsave
+from skimage.io import imsave,imread
 from skimage.segmentation import clear_border, watershed
 from scipy.ndimage.filters import uniform_filter
 from os.path import *
@@ -241,7 +241,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
         kwargs['resolution'] = (resolution, resolution, 'cm')
         kwargs['metadata'] = None
         kwargs['description'] = '!!xml!!'
-        imsave(outputPath + os.path.sep + fileName + 'Mask.tif',mask, plugin="tifffile", check_contrast=False)
+        imsave(outputPath + os.path.sep + fileName + 'Mask.tif',mask, plugin="tifffile")
         
     if saveFig== True:
         mask=np.uint8(mask>0)
@@ -299,7 +299,7 @@ if __name__ == '__main__':
 ##    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probmaps/exemplar-001_NucleiPM_1.tif'
 ##    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probmaps/exemplar-001_ContoursPM_1.tif'
 #    contoursClassProbPath =''
-#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probmaps/exemplar-001_Probabilities_1.tif'
+#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_Probabilities_1.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.cytoMethod = 'hybrid'
 
@@ -354,7 +354,7 @@ if __name__ == '__main__':
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.crop = 'autoCrop'
 #    args.probMapChan = 24
-    
+#    
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
