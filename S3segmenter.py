@@ -296,10 +296,10 @@ if __name__ == '__main__':
     #exemplar001
 #    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001.ome.tif'
 #    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
-##    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probmaps/exemplar-001_NucleiPM_1.tif'
-##    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probmaps/exemplar-001_ContoursPM_1.tif'
+##    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_NucleiPM_0.tif'
+##    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_ContoursPM_0.tif'
 #    contoursClassProbPath =''
-#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_Probabilities_1.tif'
+#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_Probabilities_0.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.cytoMethod = 'hybrid'
 
@@ -370,7 +370,7 @@ if __name__ == '__main__':
     if len(contoursClassProbPath)>0:
         legacyMode = 1
         probPrefix = os.path.basename(contoursClassProbPath)
-        nucMaskChan = int(probPrefix.split('ContoursPM_')[1].split('.')[0])-1
+        nucMaskChan = int(probPrefix.split('ContoursPM_')[1].split('.')[0])
     elif len(stackProbPath)>0:
         legacyMode = 0
         probPrefix = os.path.basename(stackProbPath)
@@ -378,7 +378,7 @@ if __name__ == '__main__':
         if len(index)==0:
             nucMaskChan = args.probMapChan
         else:
-            nucMaskChan  = int(re.sub("\D", "", index))-1
+            nucMaskChan  = int(re.sub("\D", "", index))
     else:
         print('NO PROBABILITY MAP PROVIDED')
     if args.probMapChan ==-1:
