@@ -18,7 +18,6 @@ from skimage.segmentation import clear_border, watershed
 from scipy.ndimage.filters import uniform_filter
 from os.path import *
 from os import listdir, makedirs, remove
-from sklearn.cluster import KMeans
 import pickle
 import shutil
 import fnmatch

@@ -1,6 +1,18 @@
-FROM python:3.6
+FROM ubuntu:19.10
 
-RUN pip install scikit-learn scikit-image==0.14.2 matplotlib tifffile==2019.7.26.2 opencv-python joblib
+RUN apt-get update \ 
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    python3.6 \
+    python3-pip \
+    libglu1 
 
+RUN pip3 install -U \
+	pip \
+	scikit-image \
+	matplotlib \
+	tifffile \
+	joblib \
+	opencv-python
 COPY S3segmenter.py ./app/S3segmenter.py
 COPY rowit.py ./app/rowit.py
+
