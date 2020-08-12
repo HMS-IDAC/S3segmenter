@@ -13,6 +13,7 @@ RUN pip3 install -U \
 	tifffile \
 	joblib \
 	opencv-python
+
 COPY S3segmenter.py ./app/S3segmenter.py
 COPY rowit.py ./app/rowit.py
 
