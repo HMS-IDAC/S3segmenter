@@ -104,69 +104,90 @@ def contour_pm_watershed(
 def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegion):
     nucleiContours = nucleiPM[:,:,1]
     nucleiCenters = nucleiPM[:,:,0]
-    mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
- 
-    if len(logSigma)==1:
-         nucleiDiameter  = [logSigma*0.5, logSigma*1.5]
-    else:
-         nucleiDiameter = logSigma
-    logMask = nucleiCenters > 150
     
-    win_view_setting = WindowView(nucleiContours.shape, 2000, 500)
-
-    nucleiContours = win_view_setting.window_view_list(nucleiContours)
-    padding_mask = win_view_setting.padding_mask()
-    mask = win_view_setting.window_view_list(mask)
-
-    maxArea = (logSigma[1]**2)*3/4
-    minArea = (logSigma[0]**2)*3/4
-
-    foregroundMask = np.array(
-        Parallel(n_jobs=6)(delayed(contour_pm_watershed)(
-            img, sigma=logSigma[1]/30, h=logSigma[1]/30, tissue_mask=tm,
-            padding_mask=m, min_area=minArea, max_area=maxArea
-        ) for img, tm, m in zip(nucleiContours, mask, padding_mask))
-    )
-
-    del nucleiContours, mask
-
-    foregroundMask = win_view_setting.reconstruct(foregroundMask)
-    foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
-
-    if nucleiFilter == 'IntPM':
-        int_img = nucleiCenters
-    elif nucleiFilter == 'Int':
-        int_img = nucleiImage
-
-    print('    ', datetime.datetime.now(), 'regionprops')
-    P = regionprops(foregroundMask, int_img)
-
-    def props_of_keys(prop, keys):
-        return [prop[k] for k in keys]
-
-    prop_keys = ['mean_intensity', 'area', 'solidity', 'label']
-    mean_ints, areas, solidities, labels = np.array(
-        Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
-            for prop in P
+    mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
+    
+    if nucleiRegion == 'localThreshold':
+        Imax =  peak_local_max(extrema.h_maxima(255-nucleiContours,3),indices=False)
+        Imax = label(Imax).astype(np.int32)
+        foregroundMask =  watershed(nucleiContours, Imax, watershed_line=True)
+        P = regionprops(foregroundMask, np.amax(nucleiCenters) - nucleiCenters - nucleiContours)
+        prop_keys = ['mean_intensity', 'label']
+        def props_of_keys(prop, keys):
+            return [prop[k] for k in keys]
+        
+        mean_ints, labels = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+						for prop in P
+						)
+		        ).T
+        del P
+        passed = np.less(mean_ints, 50)
+        foregroundMask *= np.isin(foregroundMask, labels[passed])
+        np.greater(foregroundMask, 0, out=foregroundMask)
+        foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
+    else:
+     
+        if len(logSigma)==1:
+             nucleiDiameter  = [logSigma*0.5, logSigma*1.5]
+        else:
+             nucleiDiameter = logSigma
+        logMask = nucleiCenters > 150
+        
+        win_view_setting = WindowView(nucleiContours.shape, 2000, 500)
+    
+        nucleiContours = win_view_setting.window_view_list(nucleiContours)
+        padding_mask = win_view_setting.padding_mask()
+        mask = win_view_setting.window_view_list(mask)
+    
+        maxArea = (logSigma[1]**2)*3/4
+        minArea = (logSigma[0]**2)*3/4
+    
+        foregroundMask = np.array(
+            Parallel(n_jobs=6)(delayed(contour_pm_watershed)(
+                img, sigma=logSigma[1]/30, h=logSigma[1]/30, tissue_mask=tm,
+                padding_mask=m, min_area=minArea, max_area=maxArea
+            ) for img, tm, m in zip(nucleiContours, mask, padding_mask))
         )
-    ).T
-    del P
-
-    MITh = threshold_otsu(mean_ints)
-
-    minSolidity = 0.8
-
-    passed = np.logical_and.reduce((
-        np.greater(mean_ints, MITh),
-        np.logical_and(areas > minArea, areas < maxArea),
-        np.greater(solidities, minSolidity)
-    ))
-
-    # set failed mask label to zero
-    foregroundMask *= np.isin(foregroundMask, labels[passed])
-
-    np.greater(foregroundMask, 0, out=foregroundMask)
-    foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
+    
+        del nucleiContours, mask
+    
+        foregroundMask = win_view_setting.reconstruct(foregroundMask)
+        foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
+    
+        if nucleiFilter == 'IntPM':
+            int_img = nucleiCenters
+        elif nucleiFilter == 'Int':
+            int_img = nucleiImage
+    
+        print('    ', datetime.datetime.now(), 'regionprops')
+        P = regionprops(foregroundMask, int_img)
+    
+        def props_of_keys(prop, keys):
+            return [prop[k] for k in keys]
+    
+        prop_keys = ['mean_intensity', 'area', 'solidity', 'label']
+        mean_ints, areas, solidities, labels = np.array(
+            Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+                for prop in P
+            )
+        ).T
+        del P
+    
+        MITh = threshold_otsu(mean_ints)
+    
+        minSolidity = 0.8
+    
+        passed = np.logical_and.reduce((
+            np.greater(mean_ints, MITh),
+            np.logical_and(areas > minArea, areas < maxArea),
+            np.greater(solidities, minSolidity)
+        ))
+    
+        # set failed mask label to zero
+        foregroundMask *= np.isin(foregroundMask, labels[passed])
+    
+        np.greater(foregroundMask, 0, out=foregroundMask)
+        foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
 
     return foregroundMask
 
@@ -298,10 +319,10 @@ if __name__ == '__main__':
 ##    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_NucleiPM_0.tif'
 ##    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_ContoursPM_0.tif'
 #    contoursClassProbPath =''
-#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_Probabilities_0.tif'
+#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001_Probabilities_0.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.cytoMethod = 'hybrid'
-
+#    args.nucleiRegion = 'localThreshold'
 	
 #	    exemplar002
 #    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/1.tif'
@@ -347,13 +368,13 @@ if __name__ == '__main__':
     #large tissue
 #    imagePath =  'D:/WD-76845-097.ome.tif'
 #    outputPath = 'D:/'
-#    nucleiClassProbPath = 'Y:/sorger/data/RareCyte/Zoltan/Z174_lung/unmist/7_NucleiPM_46.tif'
-#    contoursClassProbPath = ''
-#    stackProbPath = 'D:/ilastik/WD-76845-097_Probabilities.tif'
+#    nucleiClassProbPath = 'D:/WD-76845-097_NucleiPM_28.tif'
+#    contoursClassProbPath = 'D:/WD-76845-097_ContoursPM_28.tif'
+#    stackProbPath = 'D:/ilastik/WD-76845-097_Probabilities_0.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    args.crop = 'autoCrop'
-#    args.probMapChan = 24
-#    
+#    args.nucleiRegion = 'localThreshold'
+#    args.crop = 'autoCrop' 
+#    args.TissueMaskChan =[0]
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
