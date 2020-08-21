@@ -108,7 +108,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
     
     if nucleiRegion == 'localThreshold':
-        Imax =  peak_local_max(extrema.h_maxima(255-nucleiContours,3),indices=False)
+        Imax =  peak_local_max(extrema.h_maxima(255-nucleiContours,logSigma[0]),indices=False)
         Imax = label(Imax).astype(np.int32)
         foregroundMask =  watershed(nucleiContours, Imax, watershed_line=True)
         P = regionprops(foregroundMask, np.amax(nucleiCenters) - nucleiCenters - nucleiContours)
