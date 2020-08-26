@@ -306,8 +306,8 @@ if __name__ == '__main__':
     parser.add_argument("--CytoMaskChan",type=int, nargs = '+', default=[1])
     parser.add_argument("--TissueMaskChan",type=int, nargs = '+', default=-1)
     parser.add_argument("--detectPuncta",type=int, nargs = '+', default=[-1])
-    parser.add_argument("--punctaSigma", nargs = '+', default=[1])
-    parser.add_argument("--punctaSD", nargs = '+', default=[4])
+    parser.add_argument("--punctaSigma", nargs = '+', type=float, default=[1])
+    parser.add_argument("--punctaSD", nargs = '+', type=float, default=[4])
     parser.add_argument("--saveMask",action='store_false')
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
@@ -340,20 +340,19 @@ if __name__ == '__main__':
         
 	
 	    #punctatest
-#    imagePath = 'D:/Olesja/OP102_liver/registration/OP102_liver_DAPI_anti-GFP_01.btf'
-#    outputPath = 'D:/Olesja/OP102_liver/segmentation'
-#    nucleiClassProbPath = 'D:/Seidman/ZeissTest Sets/probability-maps/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1_NucleiPM_1.tif'
-#    contoursClassProbPath = 'D:\Seidman\ZeissTest Sets\probability-maps/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1_ContoursPM_1.tif'
-#    contoursClassProbPath =''
+#    imagePath = 'Z:/IDAC/Clarence/Seidman/DanMouse/registration/test.tif'
+#    outputPath = 'Z:/IDAC/Clarence/Seidman/DanMouse'
+#    nucleiClassProbPath = 'Z:/IDAC/Clarence/Seidman/DanMouse/probability-maps/test_NucleiPM_1.tif'
+#    contoursClassProbPath = 'Z:/IDAC/Clarence/Seidman/DanMouse/probability-maps/test_ContoursPM_1.tif'
+##    contoursClassProbPath =''
 #    stackProbPath = 'D:/Olesja/OP102_liver/probability-maps/unmicst/OP102_liver_DAPI_anti-GFP_01_Probabilities_1.tif'
-#    maskPath = 'D:/Seidman/ZeissTest Sets/segmentation/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1/cellMask.tif'
-#    args.nucleiRegion = 'localThresh'
-#    args.crop = 'autoCrop'
-#    args.logSigma = [30, 300]
+##    maskPath = 'D:/Seidman/ZeissTest Sets/segmentation/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1/cellMask.tif'
+#    args.nucleiRegion = 'localThreshold'
+#    args.logSigma = [60, 300]
 #    args.segmentCytoplasm = 'ignoreCytoplasm'
-#    args.detectPuncta = [0,1]
-#    args.punctaSigma = [1]
-#    args.punctaSD = [10]
+#    args.detectPuncta = [2,3]
+#    args.punctaSigma = 1.5
+#    args.punctaSD = 5
     
     
 	#plate 
@@ -530,7 +529,7 @@ if __name__ == '__main__':
             punctaChan = tifffile.imread(imagePath,key = iPunctaChan)
             punctaChan = punctaChan[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
             spots=S3punctaDetection(punctaChan,cellMask,args.punctaSigma[counter],args.punctaSD[counter])
-            cellspotmask = tifffile.imread(maskPath) #REMOVE THIS LATER
+            cellspotmask = nucleiMask#tifffile.imread(maskPath) #REMOVE THIS LATER
             P = regionprops(cellspotmask,intensity_image = spots ,cache=False)
             numSpots = []
             for prop in P:
