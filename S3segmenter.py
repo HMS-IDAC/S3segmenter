@@ -534,7 +534,7 @@ if __name__ == '__main__':
             numSpots = []
             for prop in P:
                 numSpots.append(np.uint16(np.round(prop.mean_intensity * prop.area)))
-            np.savetxt(outputPath + 'numSpots.csv',(np.transpose(np.asarray(numSpots))),fmt='%10.5f')    
+            np.savetxt(outputPath + 'numSpots_chan' + str(iPunctaChan) +'.csv',(np.transpose(np.asarray(numSpots))),fmt='%10.5f')    
             edges = 1-(cellMask>0)
             stacked_img=np.stack((np.uint16((spots+edges)>0)*np.amax(punctaChan),punctaChan),axis=0)
             tifffile.imsave(outputPath + os.path.sep + filePrefix + os.path.sep + 'punctaChan'+str(iPunctaChan) + 'Outlines.tif',stacked_img)
