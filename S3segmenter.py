@@ -112,16 +112,22 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
         Imax = label(Imax).astype(np.int32)
         foregroundMask =  watershed(nucleiContours, Imax, watershed_line=True)
         P = regionprops(foregroundMask, np.amax(nucleiCenters) - nucleiCenters - nucleiContours)
-        prop_keys = ['mean_intensity', 'label']
+        prop_keys = ['mean_intensity', 'label','area']
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
         del P
-        passed = np.less(mean_ints, 50)
+        maxArea = (logSigma[1]**2)*3/4
+        minArea = (logSigma[0]**2)*3/4
+        passed = np.logical_and.reduce((
+            np.logical_and(areas > minArea, areas < maxArea),
+            np.less(mean_ints, 50)
+            ))
+        
         foregroundMask *= np.isin(foregroundMask, labels[passed])
         np.greater(foregroundMask, 0, out=foregroundMask)
         foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
