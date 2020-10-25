@@ -14,7 +14,7 @@ from skimage.filters import gaussian, threshold_otsu, threshold_local
 from skimage.feature import peak_local_max
 from skimage.color import label2rgb
 from skimage.io import imsave,imread
-from skimage.segmentation import clear_border, watershed
+from skimage.segmentation import clear_border, watershed, find_boundaries
 from scipy.ndimage.filters import uniform_filter
 from os.path import *
 from os import listdir, makedirs, remove
@@ -271,7 +271,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
         
     if saveFig== True:
         mask=np.uint8(mask>0)
-        edges=cv2.Canny(mask,0,1)
+        edges = find_boundaries(mask,mode = 'outer')
         stacked_img=np.stack((np.uint16(edges)*np.amax(image),image),axis=0)
         tifffile.imsave(outputPath + os.path.sep + fileName + 'Outlines.tif',stacked_img)
         
@@ -320,7 +320,7 @@ if __name__ == '__main__':
     
     # gather filename information
     #exemplar001
-#    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001.ome.tif'
+#    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001small.ome.tif'
 #    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
 ##    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_NucleiPM_0.tif'
 ##    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_ContoursPM_0.tif'
@@ -329,6 +329,7 @@ if __name__ == '__main__':
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.cytoMethod = 'hybrid'
 #    args.nucleiRegion = 'localThreshold'
+#    args.segmentCytoplasm = 'segmentCytoplasm'
 	
 #	    exemplar002
 #    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/1.tif'
@@ -343,22 +344,31 @@ if __name__ == '__main__':
 #    args.crop = 'dearray'
 #    args.crop = 'autoCrop'
 #    args.segmentCytoplasm = 'segmentCytoplasm'
-        
 	
+	#PTCL
+#    imagePath = 'D:/LSP/cycif/testsets/PTCL/dearrayPython/1.tif'
+#    outputPath = 'D:/LSP/cycif/testsets/PTCL/dearrayPython/segmentation'
+#    nucleiClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_NucleiPM_1.tif'
+#    contoursClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_ContoursPM_1.tif'
+#    stackProbPath = 'D:/LSP/cycif/testsets/PTCL/prob_maps/1_Probabilities_40.tif'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/masks/1_mask.tif'   
+#    args.crop = 'dearray'
+#    args.segmentCytoplasm = 'segmentCytoplasm'
+#	
 	    #punctatest
-#    imagePath = 'Z:/IDAC/Clarence/Seidman/DanMouse/registration/test.tif'
-#    outputPath = 'Z:/IDAC/Clarence/Seidman/DanMouse'
-#    nucleiClassProbPath = 'Z:/IDAC/Clarence/Seidman/DanMouse/probability-maps/test_NucleiPM_1.tif'
-#    contoursClassProbPath = 'Z:/IDAC/Clarence/Seidman/DanMouse/probability-maps/test_ContoursPM_1.tif'
-##    contoursClassProbPath =''
-#    stackProbPath = 'D:/Olesja/OP102_liver/probability-maps/unmicst/OP102_liver_DAPI_anti-GFP_01_Probabilities_1.tif'
-##    maskPath = 'D:/Seidman/ZeissTest Sets/segmentation/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1/cellMask.tif'
+#    imagePath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/31082020_XXWT_Txnip550_Ddx3x647_WGA488_40x_1.tif'
+#    outputPath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/segmentation'
+##    nucleiClassProbPath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/probability-maps/test_NucleiPM_1.tif'
+##    contoursClassProbPath = 'Z:/IDAC/Clarence/Seidman/DanMouse/probability-maps/test_ContoursPM_1.tif'
+#    contoursClassProbPath =''
+#    stackProbPath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/probability-maps/31082020_XXWT_Txnip550_Ddx3x647_WGA488_40x_1_Probabilities_2.tif'
+#    maskPath = 'D:/Seidman/ZeissTest Sets/segmentation/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1/cellMask.tif'
 #    args.nucleiRegion = 'localThreshold'
-#    args.logSigma = [60, 300]
+#    args.logSigma = [45, 300]
 #    args.segmentCytoplasm = 'ignoreCytoplasm'
-#    args.detectPuncta = [2,3]
-#    args.punctaSigma = 1.5
-#    args.punctaSD = 5
+#    args.detectPuncta = [1]
+#    args.punctaSigma = [1]
+#    args.punctaSD = [3]
     
     
 	#plate 
@@ -373,13 +383,14 @@ if __name__ == '__main__':
     #large tissue
 #    imagePath =  'D:/WD-76845-097.ome.tif'
 #    outputPath = 'D:/'
-#    nucleiClassProbPath = 'D:/WD-76845-097_NucleiPM_28.tif'
-#    contoursClassProbPath = 'D:/WD-76845-097_ContoursPM_28.tif'
+##    nucleiClassProbPath = 'D:/WD-76845-097_NucleiPM_28.tif'
+#    contoursClassProbPath = ""#'D:/WD-76845-097_ContoursPM_28.tif'
 #    stackProbPath = 'D:/ilastik/WD-76845-097_Probabilities_0.tif'
 #    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
 #    args.nucleiRegion = 'localThreshold'
 #    args.crop = 'autoCrop' 
 #    args.TissueMaskChan =[0]
+#    
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -490,18 +501,18 @@ if __name__ == '__main__':
         if args.crop == 'noCrop' or args.crop == 'dearray' or args.crop == 'plate':
             cyto=np.empty((len(args.CytoMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.uint16)    
             for iChan in args.CytoMaskChan:
-                cyto[count,:,:] =  skio.imread(imagePath, key=iChan)
+                cyto[count,:,:] =  tifffile.imread(imagePath, key=iChan)
                 count+=1
         elif args.crop =='autoCrop':
             cyto=np.empty((len(args.CytoMaskChan),int(rect[2]),int(rect[3])),dtype=np.int16)
             for iChan in args.CytoMaskChan:
-                cytoFull= skio.imread(imagePath, key=iChan)
+                cytoFull= tifffile.imread(imagePath, key=iChan)
                 cyto[count,:,:] = cytoFull[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
                 count+=1                
         else:
             cyto=np.empty((len(args.CytoMaskChan),rect[3],rect[2]),dtype=np.int16)
             for iChan in args.CytoMaskChan:
-                cytoFull= skio.imread(imagePath, key=iChan)
+                cytoFull= tifffile.imread(imagePath, key=iChan)
                 cyto[count,:,:] = cytoFull[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
                 count+=1
         cyto = np.amax(cyto,axis=0)
@@ -540,7 +551,7 @@ if __name__ == '__main__':
             numSpots = []
             for prop in P:
                 numSpots.append(np.uint16(np.round(prop.mean_intensity * prop.area)))
-            np.savetxt(outputPath + 'numSpots_chan' + str(iPunctaChan) +'.csv',(np.transpose(np.asarray(numSpots))),fmt='%10.5f')    
+            np.savetxt(outputPath + os.path.sep + 'numSpots_chan' + str(iPunctaChan) +'.csv',(np.transpose(np.asarray(numSpots))),fmt='%10.5f')    
             edges = 1-(cellMask>0)
             stacked_img=np.stack((np.uint16((spots+edges)>0)*np.amax(punctaChan),punctaChan),axis=0)
             tifffile.imsave(outputPath + os.path.sep + filePrefix + os.path.sep + 'punctaChan'+str(iPunctaChan) + 'Outlines.tif',stacked_img)
