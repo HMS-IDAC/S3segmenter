@@ -101,6 +101,21 @@ def contour_pm_watershed(
         padded[padded == 1] = maxima.flatten()
         return padded.astype(np.bool)
 
+def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,outputPath):
+    nucleiCenters = nucleiPM[:,:,0]
+    TMAmask= (nucleiCenters>np.amax(nucleiCenters)*0.8)*TMAmask
+    area = []
+    area.append(np.sum(np.sum(TMAmask)))
+    for iChan in range(len(images)):
+        image_gauss = gaussian(resize(images[iChan,:,:],(int(0.25*images.shape[1]),int(0.25*images.shape[2]))),1)
+        if threshold ==-1:
+            threshold = threshold_otsu(image_gauss)
+        mask=resize(image_gauss>threshold,(images.shape[1],images.shape[2]),order = 0)*TMAmask
+        area.append(np.sum(np.sum(mask)))
+    np.savetxt(outputPath + os.path.sep + 'area.csv',(np.transpose(np.asarray(area))),fmt='%10.5f')  
+    return TMAmask
+            
+
 def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegion):
     nucleiContours = nucleiPM[:,:,1]
     nucleiCenters = nucleiPM[:,:,0]
@@ -127,6 +142,25 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
             np.logical_and(areas > minArea, areas < maxArea),
             np.less(mean_ints, 50)
             ))
+        
+        foregroundMask *= np.isin(foregroundMask, labels[passed])
+        np.greater(foregroundMask, 0, out=foregroundMask)
+        foregroundMask = label(foregroundMask, connectivity=1).astype(np.int32)
+    elif nucleiRegion =='bypass':
+        foregroundMask =  nucleiPM[:,:,0]
+        P = regionprops(foregroundMask, nucleiImage)
+        prop_keys = ['mean_intensity', 'label','area']
+        def props_of_keys(prop, keys):
+            return [prop[k] for k in keys]
+        
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+						for prop in P
+						)
+		        ).T
+        del P
+        maxArea = (logSigma[1]**2)*3/4
+        minArea = (logSigma[0]**2)*3/4
+        passed = np.logical_and(areas > minArea, areas < maxArea)
         
         foregroundMask *= np.isin(foregroundMask, labels[passed])
         np.greater(foregroundMask, 0, out=foregroundMask)
@@ -305,11 +339,13 @@ if __name__ == '__main__':
     parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray','plate'], default = 'noCrop')
     parser.add_argument("--cytoMethod",choices=['hybrid','distanceTransform','bwdistanceTransform','ring'],default = 'distanceTransform')
     parser.add_argument("--nucleiFilter",choices=['IntPM','LoG','Int','none'],default = 'IntPM')
-    parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation','localThreshold'], default = 'watershedContourInt')
+    parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation','localThreshold','bypass','pixellevel'], default = 'watershedContourInt')
+    parser.add_argument("--pixelThreshold",type = float, default = -1)
     parser.add_argument("--segmentCytoplasm",choices = ['segmentCytoplasm','ignoreCytoplasm'],default = 'ignoreCytoplasm')
     parser.add_argument("--cytoDilation",type = int, default = 5)
     parser.add_argument("--logSigma",type = int, nargs = '+', default = [3, 60])
     parser.add_argument("--CytoMaskChan",type=int, nargs = '+', default=[1])
+    parser.add_argument("--pixelMaskChan",type=int, nargs = '+', default=[1])
     parser.add_argument("--TissueMaskChan",type=int, nargs = '+', default=-1)
     parser.add_argument("--detectPuncta",type=int, nargs = '+', default=[-1])
     parser.add_argument("--punctaSigma", nargs = '+', type=float, default=[1])
@@ -390,7 +426,30 @@ if __name__ == '__main__':
 #    args.nucleiRegion = 'localThreshold'
 #    args.crop = 'autoCrop' 
 #    args.TissueMaskChan =[0]
-#    
+	
+	    #maskRCNN
+#    imagePath =  'D:/Seidman/s3segtest/registration/1.tif'
+#    outputPath = 'D:/Seidman/s3segtest/segmentation'
+#    stackProbPath = 'D:/Seidman/s3segtest/1_Probabilities_0.tif'
+#    contoursClassProbPath = ''
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
+#    args.nucleiRegion = 'bypass'
+#    args.crop = 'noCrop' 
+#    args.TissueMaskChan =[0]
+#    args.logSigma = [45,300]
+        
+#    #pixellevel
+#    imagePath =  'D:/Olesja/D2107_spleen_DAPI-EdU_01/Layer0/D2107_spleen_DAPI-EdU_01.btf'
+#    outputPath = 'D:/Olesja/D2107_spleen_DAPI-EdU_01/segmentation'
+#    stackProbPath = 'D:/Seidman/s3segtest/1_Probabilities_0.tif'
+#    contoursClassProbPath = 'D:/Olesja/D2107_spleen_DAPI-EdU_01/prob_maps3Class/D2107_spleen_DAPI-EdU_01_ContoursPM_0.tif'
+#    nucleiClassProbPath = 'D:/Olesja/D2107_spleen_DAPI-EdU_01/prob_maps3Class/D2107_spleen_DAPI-EdU_01_NucleiPM_0.tif'
+#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
+#    args.nucleiRegion = 'pixellevel'
+#    args.crop = 'noCrop' 
+#    args.TissueMaskChan =[0]
+#    args.pixelThreshold = 0.06
+           
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -400,6 +459,9 @@ if __name__ == '__main__':
        
     fileName = os.path.basename(imagePath)
     filePrefix = fileName[0:fileName.index('.')]
+    
+    if not os.path.exists(outputPath):
+        os.makedirs(outputPath)
     
     # get channel used for nuclei segmentation
 
@@ -493,7 +555,16 @@ if __name__ == '__main__':
         del tissue_gauss, tissue
 
     # nuclei segmentation
-    nucleiMask = S3NucleiSegmentationWatershed(nucleiPM,nucleiCrop,args.logSigma,TMAmask,args.nucleiFilter,args.nucleiRegion)
+    if args.nucleiRegion == 'pixellevel':
+        pixelTissue = np.empty((len(args.pixelMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.uint16)
+        count=0
+        for iChan in args.pixelMaskChan:
+                pixelCrop = tifffile.imread(imagePath,key=iChan)
+                pixelTissue[count,:,:] = pixelCrop[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
+                count+=1
+        nucleiMask = S3AreaSegmenter(nucleiPM, pixelTissue, TMAmask,args.pixelThreshold,outputPath)
+    else:
+		   nucleiMask = S3NucleiSegmentationWatershed(nucleiPM,nucleiCrop,args.logSigma,TMAmask,args.nucleiFilter,args.nucleiRegion)
     del nucleiPM
     # cytoplasm segmentation
     if args.segmentCytoplasm == 'segmentCytoplasm':
