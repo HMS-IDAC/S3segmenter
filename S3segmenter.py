@@ -122,7 +122,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
     
-    if nucleiRegion == 'localThreshold':
+    if nucleiRegion == 'localThreshold' or nucleiRegion == 'localMax':
         Imax =  peak_local_max(extrema.h_maxima(255-nucleiContours,logSigma[0]),indices=False)
         Imax = label(Imax).astype(np.int32)
         foregroundMask =  watershed(nucleiContours, Imax, watershed_line=True)
@@ -318,12 +318,8 @@ def S3punctaDetection(spotChan,mask,sigma,SD):
     thresh = med + 1.4826*SD*mad
     return (Ilog>thresh)*fgm*(mask>0)
     
-#    stacked_img=np.stack((spots*4095,nucleiCrop),axis=0)
-#    tifffile.imsave('D:/Seidman/ZeissTest Sets/registration/spottest.tif',stacked_img)
-       
-        
-    # assign nan to tissue mask
 
+       
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
@@ -339,7 +335,7 @@ if __name__ == '__main__':
     parser.add_argument("--crop",choices=['interactiveCrop','autoCrop','noCrop','dearray','plate'], default = 'noCrop')
     parser.add_argument("--cytoMethod",choices=['hybrid','distanceTransform','bwdistanceTransform','ring'],default = 'distanceTransform')
     parser.add_argument("--nucleiFilter",choices=['IntPM','LoG','Int','none'],default = 'IntPM')
-    parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation','localThreshold','bypass','pixellevel'], default = 'watershedContourInt')
+    parser.add_argument("--nucleiRegion",choices=['watershedContourDist','watershedContourInt','watershedBWDist','dilation','localThreshold','localMax','bypass','pixellevel'], default = 'watershedContourInt')
     parser.add_argument("--pixelThreshold",type = float, default = -1)
     parser.add_argument("--segmentCytoplasm",choices = ['segmentCytoplasm','ignoreCytoplasm'],default = 'ignoreCytoplasm')
     parser.add_argument("--cytoDilation",type = int, default = 5)
@@ -354,101 +350,7 @@ if __name__ == '__main__':
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
-    # gather filename information
-    #exemplar001
-#    imagePath = 'D:/LSP/cycif/testsets/exemplar-001/registration/exemplar-001small.ome.tif'
-#    outputPath = 'D:/LSP/cycif/testsets/exemplar-001/segmentation'
-##    nucleiClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_NucleiPM_0.tif'
-##    contoursClassProbPath = 'D:/LSP/cycif/testsets/exemplar-001/probability_maps/exemplar-001_ContoursPM_0.tif'
-#    contoursClassProbPath =''
-#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-001_Probabilities_0.tif'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    args.cytoMethod = 'hybrid'
-#    args.nucleiRegion = 'localThreshold'
-#    args.segmentCytoplasm = 'segmentCytoplasm'
-	
-#	    exemplar002
-#    imagePath = 'D:/LSP/cycif/testsets/exemplar-002/dearray/1.tif'
-#    outputPath = 'D:/LSP/cycif/testsets/exemplar-002/segmentation'
-#    nucleiClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_NucleiPM_1.tif'
-#    contoursClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_ContoursPM_1.tif'
-#    stackProbPath = 'D:/LSP/cycif/testsets/exemplar-002/probability-maps/unmicst_1new_Probabilities_1.tif'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/masks/1_mask.tif'
-#    args.probMapChan =1
-#    args.cytoMethod = 'hybrid'
-#    args.mask = 'TMA'
-#    args.crop = 'dearray'
-#    args.crop = 'autoCrop'
-#    args.segmentCytoplasm = 'segmentCytoplasm'
-	
-	#PTCL
-#    imagePath = 'D:/LSP/cycif/testsets/PTCL/dearrayPython/1.tif'
-#    outputPath = 'D:/LSP/cycif/testsets/PTCL/dearrayPython/segmentation'
-#    nucleiClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_NucleiPM_1.tif'
-#    contoursClassProbPath = ''#'D:/LSP/cycif/testsets/exemplar-002/prob_map/1_ContoursPM_1.tif'
-#    stackProbPath = 'D:/LSP/cycif/testsets/PTCL/prob_maps/1_Probabilities_40.tif'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-002/dearrayPython/masks/1_mask.tif'   
-#    args.crop = 'dearray'
-#    args.segmentCytoplasm = 'segmentCytoplasm'
-#	
-	    #punctatest
-#    imagePath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/31082020_XXWT_Txnip550_Ddx3x647_WGA488_40x_1.tif'
-#    outputPath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/segmentation'
-##    nucleiClassProbPath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/probability-maps/test_NucleiPM_1.tif'
-##    contoursClassProbPath = 'Z:/IDAC/Clarence/Seidman/DanMouse/probability-maps/test_ContoursPM_1.tif'
-#    contoursClassProbPath =''
-#    stackProbPath = 'Z:/IDAC/Clarence/Seidman/ZeissMouseTestSet/probability-maps/31082020_XXWT_Txnip550_Ddx3x647_WGA488_40x_1_Probabilities_2.tif'
-#    maskPath = 'D:/Seidman/ZeissTest Sets/segmentation/13042020_15AP_FAP488_LINC550_DCN647_WGA_40x_1/cellMask.tif'
-#    args.nucleiRegion = 'localThreshold'
-#    args.logSigma = [45, 300]
-#    args.segmentCytoplasm = 'ignoreCytoplasm'
-#    args.detectPuncta = [1]
-#    args.punctaSigma = [1]
-#    args.punctaSD = [3]
     
-    
-	#plate 
-#    imagePath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/registration/E3_fld_1.ome.tif'
-#    outputPath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/segmentation'
-#    nucleiClassProbPath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/prob_maps/E3_fld_1_NucleiPM_1.tif'
-#    contoursClassProbPath = 'Y:/sorger/data/computation/Jeremy/caitlin-ddd-cycif-registered/Plate1/E3_fld_1/prob_maps/E3_fld_1_ContoursPM_1.tif'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    args.crop = 'plate'
-#    args.cytoMethod ='hybrid'
-        
-    #large tissue
-#    imagePath =  'D:/WD-76845-097.ome.tif'
-#    outputPath = 'D:/'
-##    nucleiClassProbPath = 'D:/WD-76845-097_NucleiPM_28.tif'
-#    contoursClassProbPath = ""#'D:/WD-76845-097_ContoursPM_28.tif'
-#    stackProbPath = 'D:/ilastik/WD-76845-097_Probabilities_0.tif'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    args.nucleiRegion = 'localThreshold'
-#    args.crop = 'autoCrop' 
-#    args.TissueMaskChan =[0]
-	
-	    #maskRCNN
-#    imagePath =  'D:/Seidman/s3segtest/registration/1.tif'
-#    outputPath = 'D:/Seidman/s3segtest/segmentation'
-#    stackProbPath = 'D:/Seidman/s3segtest/1_Probabilities_0.tif'
-#    contoursClassProbPath = ''
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    args.nucleiRegion = 'bypass'
-#    args.crop = 'noCrop' 
-#    args.TissueMaskChan =[0]
-#    args.logSigma = [45,300]
-        
-#    #pixellevel
-#    imagePath =  'D:/Olesja/D2107_spleen_DAPI-EdU_01/Layer0/D2107_spleen_DAPI-EdU_01.btf'
-#    outputPath = 'D:/Olesja/D2107_spleen_DAPI-EdU_01/segmentation'
-#    stackProbPath = 'D:/Seidman/s3segtest/1_Probabilities_0.tif'
-#    contoursClassProbPath = 'D:/Olesja/D2107_spleen_DAPI-EdU_01/prob_maps3Class/D2107_spleen_DAPI-EdU_01_ContoursPM_0.tif'
-#    nucleiClassProbPath = 'D:/Olesja/D2107_spleen_DAPI-EdU_01/prob_maps3Class/D2107_spleen_DAPI-EdU_01_NucleiPM_0.tif'
-#    maskPath = 'D:/LSP/cycif/testsets/exemplar-001/dearray/masks/A1_mask.tif'
-#    args.nucleiRegion = 'pixellevel'
-#    args.crop = 'noCrop' 
-#    args.TissueMaskChan =[0]
-#    args.pixelThreshold = 0.06
            
     imagePath = args.imagePath
     outputPath = args.outputPath
