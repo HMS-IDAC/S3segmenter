@@ -311,15 +311,15 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
         
 def S3punctaDetection(spotChan,mask,sigma,SD):
     Ilog = -gaussian_laplace(np.float32(spotChan),sigma)
-    fgm=peak_local_max(Ilog, indices=False,footprint=np.ones((3, 3)))
+    tissueMask = spotChan >0
+    fgm=peak_local_max(Ilog, indices=False,footprint=np.ones((3, 3)))*tissueMask
     test=Ilog[fgm==1]
     med = np.median(test)
     mad = np.median(np.absolute(test - med))
     thresh = med + 1.4826*SD*mad
     return (Ilog>thresh)*fgm*(mask>0)
-    
-
-       
+ 
+     
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
@@ -350,8 +350,8 @@ if __name__ == '__main__':
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
+  
     
-           
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
