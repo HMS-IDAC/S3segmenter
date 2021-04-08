@@ -101,7 +101,7 @@ def contour_pm_watershed(
         padded[padded == 1] = maxima.flatten()
         return padded.astype(np.bool)
 
-def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,outputPath):
+def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,fileprefix,outputPath):
     nucleiCenters = nucleiPM[:,:,0]
     TMAmask= (nucleiCenters>np.amax(nucleiCenters)*0.8)*TMAmask
     area = []
@@ -112,7 +112,7 @@ def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,outputPath):
             threshold = threshold_otsu(image_gauss)
         mask=resize(image_gauss>threshold,(images.shape[1],images.shape[2]),order = 0)*TMAmask
         area.append(np.sum(np.sum(mask)))
-    np.savetxt(outputPath + os.path.sep + 'area.csv',(np.transpose(np.asarray(area))),fmt='%10.5f')  
+    np.savetxt(outputPath + os.path.sep + fileprefix + '_area.csv',(np.transpose(np.asarray(area))),fmt='%10.5f')  
     return TMAmask
             
 
@@ -350,7 +350,7 @@ if __name__ == '__main__':
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
-  
+ 
     
     imagePath = args.imagePath
     outputPath = args.outputPath
@@ -464,7 +464,7 @@ if __name__ == '__main__':
                 pixelCrop = tifffile.imread(imagePath,key=iChan)
                 pixelTissue[count,:,:] = pixelCrop[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
                 count+=1
-        nucleiMask = S3AreaSegmenter(nucleiPM, pixelTissue, TMAmask,args.pixelThreshold,outputPath)
+        nucleiMask = S3AreaSegmenter(nucleiPM, pixelTissue, TMAmask,args.pixelThreshold,filePrefix,outputPath)
     else:
 		   nucleiMask = S3NucleiSegmentationWatershed(nucleiPM,nucleiCrop,args.logSigma,TMAmask,args.nucleiFilter,args.nucleiRegion)
     del nucleiPM
