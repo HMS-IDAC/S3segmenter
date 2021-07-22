@@ -29,7 +29,7 @@ import copy
 import datetime
 from joblib import Parallel, delayed
 from rowit import WindowView, crop_with_padding_mask
-
+from save_tifffile_pyramid import save_pyramid
 
 def imshowpair(A,B):
     plt.imshow(A,cmap='Purples')
@@ -293,21 +293,28 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,saveFig=True,saveMasks
     outputPath =outputPath + os.path.sep + filePrefix
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
+    metadata_args = dict(
+        pixel_sizes=(1, 1),
+        pixel_size_units=('µm', 'µm'),
+        software='s3segmenter.py v???'
+    )
     if saveMasks ==True:
-        kwargs={}
-        kwargs['bigtiff'] = True
-        kwargs['photometric'] = 'minisblack'
-        resolution = np.round(1)
-        kwargs['resolution'] = (resolution, resolution, 'cm')
-        kwargs['metadata'] = None
-        kwargs['description'] = '!!xml!!'
-        imsave(outputPath + os.path.sep + fileName + 'Mask.tif',mask, plugin="tifffile")
-        
+        save_pyramid(
+            mask,
+            outputPath + os.path.sep + fileName + 'Mask.tif',
+            channel_names=filePrefix,
+            **metadata_args
+        )     
     if saveFig== True:
         mask=np.uint8(mask>0)
         edges = find_boundaries(mask,mode = 'outer')
         stacked_img=np.stack((np.uint16(edges)*np.amax(image),image),axis=0)
-        tifffile.imsave(outputPath + os.path.sep + fileName + 'Outlines.tif',stacked_img)
+        save_pyramid(
+            stacked_img,
+            outputPath + os.path.sep + fileName + 'Outlines.tif',
+            channel_names=[f'{filePrefix} outlines', 'Segmentation image'],
+            **metadata_args
+        )
         
 def S3punctaDetection(spotChan,mask,sigma,SD):
     Ilog = -gaussian_laplace(np.float32(spotChan),sigma)
