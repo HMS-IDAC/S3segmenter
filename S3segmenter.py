@@ -383,7 +383,7 @@ if __name__ == '__main__':
     pixelMaskChan = args.pixelMaskChan
     pixelMaskChan[:] = [number - 1 for number in pixelMaskChan]
  
-    commit = subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
+    commit = ''#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
  
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
