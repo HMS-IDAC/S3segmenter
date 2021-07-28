@@ -115,6 +115,7 @@ def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,fileprefix,outputPath):
             threshold = threshold_otsu(image_gauss)
         mask=resize(image_gauss>threshold,(images.shape[1],images.shape[2]),order = 0)*TMAmask
         area.append(np.sum(np.sum(mask)))
+    os.mk    
     np.savetxt(outputPath + os.path.sep + fileprefix + '_area.csv',(np.transpose(np.asarray(area))),fmt='%10.5f')  
     return TMAmask
 
@@ -300,6 +301,10 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata,saveFi
     outputPath =outputPath + os.path.sep + filePrefix
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
+    previewPath = outputPath + os.path.sep + 'qc'        
+    if not os.path.exists(previewPath):
+        os.makedirs(previewPath)
+        
     metadata_args = dict(
         pixel_sizes=(metadata.physical_size_y,metadata.physical_size_x),
         pixel_size_units=('µm', 'µm'),
@@ -318,7 +323,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata,saveFi
         stacked_img=np.stack((np.uint16(edges)*np.amax(image),image),axis=0)
         save_pyramid(
             stacked_img,
-            outputPath + os.path.sep + fileName + 'Outlines.ome.tif',
+            previewPath + os.path.sep + fileName + 'Outlines.ome.tif',
             channel_names=[f'{fileName} outlines', 'Segmentation image'],
             **metadata_args
         )
@@ -364,7 +369,7 @@ if __name__ == '__main__':
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
-       
+
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -387,6 +392,7 @@ if __name__ == '__main__':
  
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
+        
     
     # get channel used for nuclei segmentation
 
