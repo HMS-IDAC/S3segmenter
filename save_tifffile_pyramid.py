@@ -53,13 +53,15 @@ def save_pyramid(
         )
 
     metadata = {
+        'Creator': software,
         'Pixels': {
             'PhysicalSizeX': size_x,
             'PhysicalSizeXUnit': unit_x,
             'PhysicalSizeY': size_y,
-            'PhysicalSizeYUnit': unit_y
+            'PhysicalSizeYUnit': unit_y,
         },
         'Channel': {'Name': channel_names},
+        
     }
 
     if software == None:
