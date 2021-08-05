@@ -122,9 +122,16 @@ def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,fileprefix,outputPath):
 def getMetadata(path,commit):
     with tifffile.TiffFile(path) as tif:
         if not tif.ome_metadata:
-            
+            try:
+                x_res_tag = tif.pages[0].tags['XResolution'].value
+                y_res_tag = tif.pages[0].tags['YResolution'].value
+                physical_size_x = x_res_tag[0] / x_res_tag[1]
+                physical_size_y = y_res_tag[0] / y_res_tag[1]
+            except KeyError:
+                physical_size_x = 1
+                physical_size_y = 1
             metadata_args = dict(
-            pixel_sizes=(tif.pages[0].tags['YResolution'].value[0],tif.pages[0].tags['XResolution'].value[0]),
+            pixel_sizes=(physical_size_y, physical_size_x),
             pixel_size_units=('µm', 'µm'),
             software= 's3segmenter v' + commit
             )
@@ -378,7 +385,7 @@ if __name__ == '__main__':
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
-   
+
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -398,8 +405,7 @@ if __name__ == '__main__':
     pixelMaskChan = args.pixelMaskChan
     pixelMaskChan[:] = [number - 1 for number in pixelMaskChan]
  
-    
- 
+     
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
         
@@ -413,23 +419,15 @@ if __name__ == '__main__':
     elif len(stackProbPath)>0:
         legacyMode = 0
         probPrefix = os.path.basename(stackProbPath)
-        index = re.split('_', stackProbPath)
-        index = re.search('.', index[-1]).group(0)
-        
-        if len(index)==0:
-            nucMaskChan = args.probMapChan
-        else:
-            nucMaskChan  = int(re.sub("\D", "", index))
     else:
         print('NO PROBABILITY MAP PROVIDED')
-    if args.probMapChan ==-1:
-        if nucMaskChan ==-1:
-            sys.exit('INVALID NUCLEI CHANNEL SELECTION. SELECT CHANNEL USING --probMapChan')
-        else:
-            print('extracting nuclei channel from filename')
+
+    if args.probMapChan==-1:
+        print('Using first channel by default!')
+        nucMaskChan = 0
     else:
         nucMaskChan = args.probMapChan
-    nucMaskChan = nucMaskChan -1 #convert 1-based indexing to 0-based indexing    
+        nucMaskChan = nucMaskChan -1 #convert 1-based indexing to 0-based indexing      
 
     if args.TissueMaskChan==0:
         TissueMaskChan = copy.copy(CytoMaskChan)
