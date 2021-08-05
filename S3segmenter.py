@@ -119,10 +119,24 @@ def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,fileprefix,outputPath):
     np.savetxt(outputPath + os.path.sep + fileprefix + '_area.csv',(np.transpose(np.asarray(area))),fmt='%10.5f')  
     return TMAmask
 
-def getMetadata(path):
+def getMetadata(path,commit):
     with tifffile.TiffFile(path) as tif:
-        metadata=ome_types.from_xml(tif.ome_metadata)
-        return metadata.images[0].pixels
+        if not tif.ome_metadata:
+            
+            metadata_args = dict(
+            pixel_sizes=(tif.pages[0].tags['YResolution'].value[0],tif.pages[0].tags['XResolution'].value[0]),
+            pixel_size_units=('µm', 'µm'),
+            software= 's3segmenter v' + commit
+            )
+        else: 
+            metadata=ome_types.from_xml(tif.ome_metadata)
+            metadata = metadata.images[0].pixels
+            metadata_args = dict(
+            pixel_sizes=(metadata.physical_size_y,metadata.physical_size_x),
+            pixel_size_units=('µm', 'µm'),
+            software= 's3segmenter v' + commit
+            )
+        return metadata_args
 
 def S3NucleiBypass(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegion):        
         foregroundMask =  nucleiPM
@@ -297,19 +311,14 @@ def S3CytoplasmSegmentation(nucleiMask,cyto,mask,cytoMethod='distanceTransform',
     cytoplasmMask = np.subtract(finalCellMask,nucleiMask)
     return cytoplasmMask,nucleiMask,finalCellMask
     
-def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata,saveFig=True,saveMasks = True):
+def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata_args,saveFig=True,saveMasks = True):
     outputPath =outputPath + os.path.sep + filePrefix
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
     previewPath = outputPath + os.path.sep + 'qc'        
     if not os.path.exists(previewPath):
         os.makedirs(previewPath)
-        
-    metadata_args = dict(
-        pixel_sizes=(metadata.physical_size_y,metadata.physical_size_x),
-        pixel_size_units=('µm', 'µm'),
-        software= 's3segmenter v' + commit
-    )
+   
     if saveMasks ==True:
         save_pyramid(
             mask,
@@ -369,7 +378,7 @@ if __name__ == '__main__':
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
-
+   
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -377,7 +386,8 @@ if __name__ == '__main__':
     stackProbPath = args.stackProbPath
     maskPath = args.maskPath
     
-    metadata = getMetadata(imagePath)
+    commit = '1.3.7'#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
+    metadata = getMetadata(imagePath,commit)
     
     fileName = os.path.basename(imagePath)
     filePrefix = fileName[0:fileName.index('.')]
@@ -388,7 +398,7 @@ if __name__ == '__main__':
     pixelMaskChan = args.pixelMaskChan
     pixelMaskChan[:] = [number - 1 for number in pixelMaskChan]
  
-    commit = ''#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
+    
  
     if not os.path.exists(outputPath):
         os.makedirs(outputPath)
@@ -562,7 +572,7 @@ if __name__ == '__main__':
             np.savetxt(outputPath + os.path.sep + 'numSpots_chan' + str(iPunctaChan+1) +'.csv',(np.transpose(np.asarray(numSpots))),fmt='%10.5f')    
             edges = 1-(cellMask>0)
             stacked_img=np.stack((np.uint16((spots+edges)>0)*np.amax(punctaChan),punctaChan),axis=0)
-            # tifffile.imsave(outputPath + os.path.sep + filePrefix + os.path.sep + 'punctaChan'+str(iPunctaChan+1) + 'Outlines.tif',stacked_img)
+            
             
             
             outputPathPuncta = outputPath + os.path.sep + filePrefix + os.path.sep + 'punctaChan'+str(iPunctaChan+1) + 'Outlines.ome.tif'
@@ -579,5 +589,4 @@ if __name__ == '__main__':
                 **metadata_args
                 )     
             
-            counter=counter+1        
-        #fix bwdistance watershed
+            counter=counter+1    
