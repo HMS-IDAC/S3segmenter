@@ -51,7 +51,10 @@ def save_pyramid(
             f'number of channel_names ({n_channel_names}) must match '
             f'number of channels ({n_channels})'
         )
-
+    
+    if software == None:
+        software = ''
+        
     metadata = {
         'Creator': software,
         'Pixels': {
@@ -63,9 +66,6 @@ def save_pyramid(
         'Channel': {'Name': channel_names},
         
     }
-
-    if software == None:
-        software = ''
 
     max_size = np.max(img_shape)
     subifds = np.ceil(np.log2(max_size / 1024)).astype(int)
