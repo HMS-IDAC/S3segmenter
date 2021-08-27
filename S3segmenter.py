@@ -385,7 +385,6 @@ if __name__ == '__main__':
     parser.add_argument("--saveFig",action='store_false')
     args = parser.parse_args()
     
-
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
@@ -393,7 +392,7 @@ if __name__ == '__main__':
     stackProbPath = args.stackProbPath
     maskPath = args.maskPath
     
-    commit = '1.3.7'#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
+    commit = '1.3.9'#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
     metadata = getMetadata(imagePath,commit)
     
     fileName = os.path.basename(imagePath)
@@ -575,16 +574,16 @@ if __name__ == '__main__':
             
             outputPathPuncta = outputPath + os.path.sep + filePrefix + os.path.sep + 'punctaChan'+str(iPunctaChan+1) + 'Outlines.ome.tif'
             
-            metadata_args = dict(
-                pixel_sizes=(metadata.physical_size_y, metadata.physical_size_x),
-                pixel_size_units=('µm', 'µm'),
-                software= 's3segmenter v' + commit
-                )
+            # metadata_args = dict(
+            #     pixel_sizes=(metadata.physical_size_y, metadata.physical_size_x),
+            #     pixel_size_units=('µm', 'µm'),
+            #     software= 's3segmenter v' + commit
+            #     )
             save_pyramid(
                 stacked_img,
                 outputPathPuncta,
                 channel_names=['puncta outlines', 'image channel'],
-                **metadata_args
+                **metadata
                 )     
             
             counter=counter+1    
