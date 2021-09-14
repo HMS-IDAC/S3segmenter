@@ -102,7 +102,7 @@ def save_pyramid(
     return
 
 def downsize_channel(img, is_mask):
-    if is_mask == True:
+    if is_mask:
         return img[::2, ::2]
     else:
         return skimage.transform.downscale_local_mean(img, (2, 2)).astype(img.dtype)
