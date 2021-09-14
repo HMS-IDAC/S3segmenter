@@ -331,6 +331,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata_args,s
             mask,
             outputPath + os.path.sep + fileName + '.ome.tif',
             channel_names=fileName,
+            is_mask=True,
             **metadata_args
         )     
     if saveFig== True:
@@ -341,6 +342,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata_args,s
             stacked_img,
             previewPath + os.path.sep + fileName + 'Outlines.ome.tif',
             channel_names=[f'{fileName} outlines', 'Segmentation image'],
+            is_mask=False,
             **metadata_args
         )
         
@@ -583,6 +585,7 @@ if __name__ == '__main__':
                 stacked_img,
                 outputPathPuncta,
                 channel_names=['puncta outlines', 'image channel'],
+                is_mask=False,
                 **metadata
                 )     
             

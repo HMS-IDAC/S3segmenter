@@ -20,7 +20,8 @@ def save_pyramid(
     pixel_sizes=(1, 1),
     pixel_size_units=('µm', 'µm'),
     channel_names=None,
-    software=None
+    software=None,
+    is_mask=False
 ):
     assert '.ome.tif' in str(output_path)
     assert len(pixel_sizes) == len(pixel_size_units) == 2
@@ -88,9 +89,9 @@ def save_pyramid(
         )
         for i in range(subifds):
             if i == 0:
-                down_2x_img = downsize_img_channels(out_img)
+                down_2x_img = downsize_img_channels(out_img, is_mask=is_mask)
             else:
-                down_2x_img = downsize_img_channels(down_2x_img)
+                down_2x_img = downsize_img_channels(down_2x_img, is_mask=is_mask)
             tiff_out.write(
                 data=down_2x_img,
                 subfiletype=1,
@@ -100,14 +101,14 @@ def save_pyramid(
     out_img = out_img.reshape(img_shape_ori)
     return
 
-def downsize_channel(img):
-    if np.all((img == img.min()) | (img == img.max())):
+def downsize_channel(img, is_mask):
+    if is_mask:
         return img[::2, ::2]
     else:
         return skimage.transform.downscale_local_mean(img, (2, 2)).astype(img.dtype)
 
-def downsize_img_channels(img):
+def downsize_img_channels(img, is_mask):
     return np.array([
-        downsize_channel(c)
+        downsize_channel(c, is_mask=is_mask)
         for c in img
     ])
