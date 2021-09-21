@@ -394,7 +394,7 @@ if __name__ == '__main__':
     stackProbPath = args.stackProbPath
     maskPath = args.maskPath
     
-    commit = '1.3.9'#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
+    commit = '1.3.11'#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
     metadata = getMetadata(imagePath,commit)
     
     fileName = os.path.basename(imagePath)
