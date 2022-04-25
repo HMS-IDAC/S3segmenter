@@ -152,7 +152,7 @@ def S3NucleiBypass(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=1)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -559,11 +559,18 @@ if __name__ == '__main__':
             args.punctaSD = args.punctaSD[0] * np.ones(len(detectPuncta))
   
         counter=0
+        outputPathSpotMask = outputPath + os.path.sep + filePrefix + os.path.sep + 'spots.ome.tif'
+        spotMask = np.empty((len(detectPuncta),PMrect[2], PMrect[3]))
+        
+        spot_channel_names =[]
         for iPunctaChan in detectPuncta:
             punctaChan = tifffile.imread(imagePath,key = iPunctaChan)
             punctaChan = punctaChan[int(PMrect[0]):int(PMrect[0]+PMrect[2]), int(PMrect[1]):int(PMrect[1]+PMrect[3])]
             spots=S3punctaDetection(punctaChan,cellMask,args.punctaSigma[counter],args.punctaSD[counter])
             cellspotmask = nucleiMask
+            spotMask[counter,:,:] = cellspotmask*(spots>0)
+            spot_channel_names.append('channel_'+str(iPunctaChan+1))
+            
             P = regionprops(cellspotmask,intensity_image = spots ,cache=False)
             numSpots = []
             for prop in P:
@@ -581,12 +588,22 @@ if __name__ == '__main__':
             #     pixel_size_units=('µm', 'µm'),
             #     software= 's3segmenter v' + commit
             #     )
+
             save_pyramid(
                 stacked_img,
                 outputPathPuncta,
                 channel_names=['puncta outlines', 'image channel'],
                 is_mask=False,
                 **metadata
-                )     
+                )    
+     
             
             counter=counter+1    
+
+        save_pyramid(
+            spotMask,
+            outputPathSpotMask,
+            channel_names= spot_channel_names,
+            is_mask=False,
+            **metadata
+            ) 
