@@ -70,6 +70,9 @@ def save_pyramid(
 
     max_size = np.max(img_shape)
     subifds = np.ceil(np.log2(max_size / 1024)).astype(int)
+    # skip pyramid if max image size <= 1024
+    if subifds < 0:
+        subifds = 0
     
     # use optimal tile size for disk space
     tile_size = 16*np.ceil(
