@@ -21,12 +21,22 @@ jobs:
           username: ${{ secrets.MCMICRO_USERNAME }}
           password: ${{ secrets.MCMICRO_TOKEN }}
       -
-        name: Build and push
-        id: docker_build
+        name: Build and push the standard image
+        id: docker_build_standard
         uses: docker/build-push-action@v2
         with:
           push: true
           tags: labsyspharm/s3segmenter:${{ github.event.release.tag_name }}
       -
+        name: Build and push the large-scale image
+        id: docker_build_large
+        uses: docker/build-push-action@v2
+        with:
+          context: large
+          push: true
+          tags: labsyspharm/s3segmenter:${{ github.event.release.tag_name }}-large
+      -
         name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+        run: |
+          echo ${{ steps.docker_build_standard.outputs.digest }}
+          echo ${{ steps.docker_build_large.outputs.digest }}
