@@ -1,0 +1,56 @@
+name: CI
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build the Docker container
+        run: |
+          docker build -t s3seg:test .
+          docker build -t s3seg:test-large large/
+
+      # Cache test data to avoid repeated download
+      - uses: actions/cache@v3
+        id: cache-data
+        with:
+          path: |
+            ~/data/exemplar-001-cycle6.ome.tif
+            ~/data/exemplar-001-cycle6_Probabilities_1.tif
+          key: testdata-2022-05-12
+
+      # Download test data only if no cache is present
+      - name: Test data download
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: |
+          mkdir ~/data
+          cd ~/data
+          curl -f -o exemplar-001-cycle6.ome.tif \
+            https://mcmicro.s3.amazonaws.com/ci/exemplar-001-cycle6.ome.tif          
+          curl -f -o exemplar-001-cycle6_Probabilities_1.tif \
+            https://mcmicro.s3.amazonaws.com/ci/exemplar-001-cycle6_Probabilities_1.tif
+      - name: Test the container
+        run: |
+          cd ~/data
+          mkdir large
+          rm -rf exemplar-001-cycle6
+          rm -rf qc/
+          docker run -v "$PWD":/data s3seg:test /bin/bash -c "cd /data; \
+            python /app/S3segmenter.py --imagePath $img --stackProbPath $pmap --outputPath ."
+          docker run -v "$PWD":/data s3seg:test-large /bin/bash -c "cd /data; \
+            python /app/S3segmenter.py --imagePath $img --stackProbPath $pmap --outputPath large"
+        env:
+          img: exemplar-001-cycle6.ome.tif
+          pmap: exemplar-001-cycle6_Probabilities_1.tif
+
+      # If the action is successful, the output will be available as a downloadable artifact
+      - name: Upload processed result
+        uses: actions/upload-artifact@v2
+        with:
+          name: exemplar-001
+          path: |
+            ~/data/exemplar-001-cycle6_Probabilities_1.tif
+            ~/data/qc/**
+  
