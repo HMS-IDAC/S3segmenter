@@ -326,7 +326,8 @@ def main(argv=sys.argv):
     parser.add_argument( 
         '--gaussian-sigma', 
         help='sigma value to gaussian blur probability map for peak finding', 
-        default=1 
+        default=1.0,
+        type=float
     ) 
     parser.add_argument( 
         '--maxima-h', 
