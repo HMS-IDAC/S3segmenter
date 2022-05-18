@@ -4,6 +4,15 @@ TODO
 
 ---
 
+conda env for development and testing
+
+```bash
+conda create -n s3seg-dev numpy pandas scikit-learn scikit-image imagecodecs tifffile zarr dask-image -c conda-forge
+conda activate s3seg-dev
+python -m pip install ome_types opencv-python
+```
+
+---
 
 input file
 
