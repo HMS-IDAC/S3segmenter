@@ -77,7 +77,8 @@ class WatershedSegmentor:
         overlap_size=None, 
         mean_intensity_min=0, 
         area_min=0, 
-        area_max=np.inf 
+        area_max=np.inf,
+        pixel_size=None
     ) -> None: 
         self.contour_img = contour_img 
         self._contour_img = contour_img 
@@ -90,6 +91,7 @@ class WatershedSegmentor:
         self.mean_intensity_min = mean_intensity_min 
         self.area_min = area_min 
         self.area_max = area_max 
+        self.pixel_size = pixel_size
  
         self.mask = None 
         self.config = None 
@@ -125,8 +127,12 @@ class WatershedSegmentor:
         if file_name.endswith(('.ome.tiff', '.ome.tif')): 
             if img is None: img = self.run(config_id) 
             logging.info(f'Writing to {file_path}') 
+            if self.pixel_size is None:
+                pixel_sizes = (1, 1)
+            else: 
+                pixel_sizes = (self.pixel_size, self.pixel_size)
             return save_tifffile_pyramid.save_pyramid( 
-                img, file_path, is_mask=True 
+                img, file_path, is_mask=True, pixel_sizes=pixel_sizes
             ) 
         logging.warning('Write failed: output file type not supported') 
         return 
@@ -376,6 +382,12 @@ def main(argv=sys.argv):
         default=False, 
         action='store_true' 
     ) 
+    parser.add_argument( 
+        '--pixel-size', 
+        help='image pixel size in micron', 
+        default=None, 
+        type=float
+    ) 
      
     args = parser.parse_args(argv[1:]) 
      
@@ -389,6 +401,13 @@ def main(argv=sys.argv):
     logging.info(f'Reading {args.i}') 
     probability_maps = tifffile.imread(args.i, key=[0, 1]) 
     logging.info(f'Probability map shape: {probability_maps.shape}') 
+
+    pixel_size = args.pixel_size
+    if pixel_size is None:
+        pixel_size = 1.0
+        logging.warning(
+            f"Pixel size not specified, using {pixel_size} micron as a placeholder"
+        ) 
  
     segmentor = WatershedSegmentor( 
         da.from_array(probability_maps[1], chunks=2048), 
@@ -399,7 +418,8 @@ def main(argv=sys.argv):
         args.overlap_size, 
         args.mean_intensity_min, 
         args.area_min, 
-        args.area_max 
+        args.area_max,
+        args.pixel_size
     ) 
  
     segmentor.write(args.o) 
@@ -430,11 +450,13 @@ def main(argv=sys.argv):
             path_expanded, 
             output_path=path_difference 
         ) 
-     
+    
     logging.info('Done') 
     return 0 
  
-def expand_mask_from_file(input_path, expand_size, output_path=None): 
+def expand_mask_from_file(
+    input_path, expand_size, output_path=None, pixel_size=None
+): 
     expanded_path = output_path 
     if expanded_path is None: 
         input_path = pathlib.Path(input_path) 
@@ -443,7 +465,7 @@ def expand_mask_from_file(input_path, expand_size, output_path=None):
             suffix, f'-expanded_{expand_size}{suffix}' 
         ) 
     segmentor = WatershedSegmentor( 
-        None, None, overlap_size=2*expand_size 
+        None, None, overlap_size=2*expand_size, pixel_size=pixel_size
     ) 
     z = zarr.open( 
         tifffile.imread(input_path, aszarr=True, series=0, level=0) 
@@ -457,7 +479,9 @@ def expand_mask_from_file(input_path, expand_size, output_path=None):
         ) 
     return expanded_path 
  
-def difference_mask_from_file(path_1, path_2, output_path=None): 
+def difference_mask_from_file(
+    path_1, path_2, output_path=None, pixel_size=None
+): 
     if output_path is None: 
         input_path = pathlib.Path(path_1) 
         suffix = ''.join(input_path.suffixes) 
@@ -480,7 +504,7 @@ def difference_mask_from_file(path_1, path_2, output_path=None):
         da.from_zarr(z2) 
     ) 
     segmentor = WatershedSegmentor( 
-        None, None 
+        None, None, pixel_size=pixel_size
     ) 
     with dask.diagnostics.ProgressBar(): 
         segmentor.write( 
