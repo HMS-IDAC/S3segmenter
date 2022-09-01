@@ -1,11 +1,12 @@
 FROM python:3.10
 
 RUN python -m pip install \
-    palom \ 
+    palom>=2022.9.1 \ 
     dask[dataframe] \
-    opencv-python-headless \
     dask-image \
     ome_types
+RUN python -m pip uninstall opencv-python -y
+RUN python -m pip install opencv-python-headless
 
 COPY S3segmenter.py ./app/S3segmenter.py
 COPY save_tifffile_pyramid.py ./app/save_tifffile_pyramid.py
