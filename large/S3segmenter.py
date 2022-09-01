@@ -4,6 +4,8 @@ import pathlib
  
 import watershed 
 import s3seg_util
+import s3seg_qc
+
 import logging
  
 def main(argv=sys.argv): 
@@ -26,9 +28,14 @@ def main(argv=sys.argv):
         required=True 
     ) 
     parser.add_argument( 
+        '--probMapChan', 
+        default=None,
+        type=int
+    ) 
+    parser.add_argument( 
         '--outputPath', 
         default='.' 
-    ) 
+    )
     parser.add_argument( 
         '--pixelSize', 
         default=None,
@@ -42,8 +49,16 @@ def main(argv=sys.argv):
  
     out_path = pathlib.Path(args.outputPath) / img_stem / 'nuclei.ome.tif' 
     out_path.parent.mkdir(exist_ok=True, parents=True) 
- 
-    return watershed.main([ 
+    
+    img_channel = args.probMapChan
+    if img_channel is None:
+        logging.warning(
+            'Image channel used for generating probability maps not specified'
+            ' use `--probMapChan CHANNEL` to specify it. Assuming first channel (1)'
+        )
+        img_channel = 0
+    else: img_channel -= 1
+
     if args.pixelSize is not None:
         pixel_size = args.pixelSize
     else:
@@ -63,6 +78,19 @@ def main(argv=sys.argv):
         *extra_argv 
     ]) 
 
+    qc_dir = pathlib.Path(args.outputPath) / 'qc' / img_stem
+    qc_dir.mkdir(exist_ok=True, parents=True)
+
+    s3seg_qc.run_mcmicro(
+        out_path,
+        qc_dir / 'nucleiOutlines.ome.tif',
+        pmap_path=args.stackProbPath,
+        img_path=args.imagePath,
+        img_channel=img_channel,
+        pixel_size=pixel_size
+    )
+    
+    return 0
  
 if __name__ == '__main__': 
     sys.exit(main())
