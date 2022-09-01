@@ -433,7 +433,7 @@ def main(argv=sys.argv):
         path_expanded = None 
         if args.mcmicro: 
             path_o = pathlib.Path(args.o) 
-            path_expanded = path_o.parent / 'cell.ome.tif' 
+            path_expanded = path_o.parent / 'cellRing.ome.tif' 
         path_expanded = expand_mask_from_file( 
             args.o, 
             args.expand_size, 
@@ -444,7 +444,7 @@ def main(argv=sys.argv):
         path_difference = None 
         if args.mcmicro: 
             path_o = pathlib.Path(args.o) 
-            path_difference = path_o.parent / 'cyto.ome.tif' 
+            path_difference = path_o.parent / 'cytoRing.ome.tif' 
         difference_mask_from_file( 
             args.o, 
             path_expanded, 

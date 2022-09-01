@@ -47,7 +47,7 @@ def main(argv=sys.argv):
     img_path = pathlib.Path(args.imagePath) 
     img_stem = img_path.name.split('.')[0] 
  
-    out_path = pathlib.Path(args.outputPath) / img_stem / 'nuclei.ome.tif' 
+    out_path = pathlib.Path(args.outputPath) / img_stem / 'nucleiRing.ome.tif' 
     out_path.parent.mkdir(exist_ok=True, parents=True) 
     
     img_channel = args.probMapChan
@@ -83,7 +83,7 @@ def main(argv=sys.argv):
 
     s3seg_qc.run_mcmicro(
         out_path,
-        qc_dir / 'nucleiOutlines.ome.tif',
+        qc_dir / 'nucleiRingOutlines.ome.tif',
         pmap_path=args.stackProbPath,
         img_path=args.imagePath,
         img_channel=img_channel,
