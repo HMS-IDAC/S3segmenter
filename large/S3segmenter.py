@@ -61,6 +61,7 @@ def main(argv=sys.argv):
 
     if args.pixelSize is not None:
         pixel_size = args.pixelSize
+        logging.info(f"Pixel size: {pixel_size} (user supplied)")
     else:
         pixel_size = s3seg_util.detect_pixel_size(img_path)
         if pixel_size is None:
@@ -68,6 +69,7 @@ def main(argv=sys.argv):
                 'Auto-detect pixel size failed, use `--pixelSize SIZE` to specify it'
             )
             return 1
+        logging.info(f"Pixel size: {pixel_size} (from ome-xml)")
 
     watershed.main([ 
         '', 
