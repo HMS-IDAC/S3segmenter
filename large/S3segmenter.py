@@ -5,6 +5,7 @@ import pathlib
 import watershed 
 import s3seg_util
 import s3seg_qc
+import ignored_args
 
 import logging
  
@@ -42,9 +43,10 @@ def main(argv=sys.argv):
         default=None,
         type=float 
     )
- 
+    
+    ignored_args.add_unsupported_argument(parser)
     args, extra_argv = parser.parse_known_args(argv[1:]) 
- 
+
     img_path = pathlib.Path(args.imagePath) 
     img_stem = img_path.name.split('.')[0] 
  
