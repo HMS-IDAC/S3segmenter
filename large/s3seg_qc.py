@@ -16,7 +16,7 @@ def mask_to_bound(
 ):
     return img_da.map_overlap(
         skimage.segmentation.find_boundaries,
-        mode='inner',
+        mode='outer',
         depth=overlap_depth,
         boundary='none'
     ).astype(out_dtype) * positive_value
