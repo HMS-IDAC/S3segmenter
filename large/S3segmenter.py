@@ -92,7 +92,7 @@ def main(argv=sys.argv):
         qc_dir / 'nucleiRingOutlines.ome.tif',
         pmap_path=args.stackProbPath,
         img_path=args.imagePath,
-        img_channel=img_channels,
+        img_channels=img_channels,
         pixel_size=pixel_size
     )
     
