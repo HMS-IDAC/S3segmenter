@@ -13,4 +13,5 @@ COPY save_tifffile_pyramid.py ./app/save_tifffile_pyramid.py
 COPY watershed.py ./app/watershed.py
 COPY s3seg_qc.py ./app/s3seg_qc.py
 COPY s3seg_util.py ./app/s3seg_util.py
+COPY ignored_args.py ./app/ignored_args.py
 
