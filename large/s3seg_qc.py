@@ -44,7 +44,7 @@ def run_mcmicro(
     out_path,
     pmap_path=None,
     img_path=None,
-    img_channel=0,
+    img_channels=None,
     pixel_size=1
 ):
     assert pathlib.Path(out_path).parent.exists()
@@ -68,17 +68,18 @@ def run_mcmicro(
         out_channels.append(da_contour_probability_map)
         channel_names.append('Contour probability map')
     
+    if img_channels is None: img_channels = [0]
+    img_channels = set(img_channels)
+
     if img_path is not None:
-        zarr_img = zarr.open(
-            tifffile.imread(img_path, aszarr=True, series=0, level=0)
-        )
-        da_img = da.from_zarr(zarr_img)
-        if da_img.ndim > 2:
-            da_img = da_img[img_channel]
-        if da_img.dtype != np.uint8:
-            da_img = rescale_channel(da_img, 0.1, 99.9, np.uint8)
-        out_channels.append(da_img)
-        channel_names.append(f"Image channel {img_channel}")
+        reader = palom.reader.OmePyramidReader(img_path)
+        da_img = reader.pyramid[0]
+
+        for channel in img_channels:
+            out_channels.append(
+                rescale_channel(da_img[channel], 0.1, 99.9, np.uint8)
+            )
+            channel_names.append(f"Image channel {channel}")
     
     da_stack = da.array(out_channels)
 

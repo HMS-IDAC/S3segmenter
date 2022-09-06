@@ -30,7 +30,8 @@ def main(argv=sys.argv):
     parser.add_argument( 
         '--probMapChan', 
         default=None,
-        type=int
+        type=int,
+        nargs="+"
     ) 
     parser.add_argument( 
         '--outputPath', 
@@ -50,14 +51,15 @@ def main(argv=sys.argv):
     out_path = pathlib.Path(args.outputPath) / img_stem / 'nucleiRing.ome.tif' 
     out_path.parent.mkdir(exist_ok=True, parents=True) 
     
-    img_channel = args.probMapChan
-    if img_channel is None:
+    img_channels = args.probMapChan
+    if img_channels is None:
         logging.warning(
             'Image channel used for generating probability maps not specified'
             ' use `--probMapChan CHANNEL` to specify it. Assuming first channel (1)'
         )
-        img_channel = 0
-    else: img_channel -= 1
+        img_channels = [0]
+    else: img_channels = [c-1 for c in img_channels]
+    assert min(img_channels) >= 0, f'--probMapChannel ({args.img_channels}) must >= 1'
 
     if args.pixelSize is not None:
         pixel_size = args.pixelSize
@@ -88,7 +90,7 @@ def main(argv=sys.argv):
         qc_dir / 'nucleiRingOutlines.ome.tif',
         pmap_path=args.stackProbPath,
         img_path=args.imagePath,
-        img_channel=img_channel,
+        img_channel=img_channels,
         pixel_size=pixel_size
     )
     
