@@ -1,9 +1,9 @@
 # install 
  
 ```bash 
-conda create -n test-s3seg-dev numpy scikit-learn scikit-image matplotlib tifffile -c conda-forge 
+conda create -n test-s3seg-dev python pip -c conda-forge 
 conda activate test-s3seg-dev 
-python -m pip install opencv-python ome_types imagecodecs dask-image zarr 
+python -m pip install "palom>=2022.9" dask[dataframe] dask-image ome_types
 ``` 
  
 # Example 
