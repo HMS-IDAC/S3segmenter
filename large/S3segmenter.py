@@ -84,7 +84,7 @@ def main(argv=sys.argv):
         *extra_argv 
     ]) 
 
-    qc_dir = pathlib.Path(args.outputPath) / 'qc' / img_stem
+    qc_dir = pathlib.Path(args.outputPath) / img_stem / 'qc' 
     qc_dir.mkdir(exist_ok=True, parents=True)
 
     s3seg_qc.run_mcmicro(
