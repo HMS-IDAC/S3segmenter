@@ -61,7 +61,7 @@ def main(argv=sys.argv):
         )
         img_channels = [0]
     else: img_channels = [c-1 for c in img_channels]
-    assert min(img_channels) >= 0, f'--probMapChannel ({args.img_channels}) must >= 1'
+    assert min(img_channels) >= 0, f'--probMapChannel ({args.probMapChan}) must >= 1'
 
     if args.pixelSize is not None:
         pixel_size = args.pixelSize
