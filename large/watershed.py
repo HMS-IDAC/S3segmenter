@@ -338,7 +338,8 @@ def main(argv=sys.argv):
     parser.add_argument( 
         '--maxima-h', 
         help='`h` in `skimage.morphology.extrema.h_maxima`', 
-        default=0.01 
+        default=0.01, 
+        type=float 
     ) 
     parser.add_argument( 
         '--maxima-footprint-size', 
