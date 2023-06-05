@@ -2,6 +2,7 @@ import tifffile
 import numpy as np 
 import cv2 
 import zarr 
+import palom
  
 import skimage.morphology 
 import skimage.util 
@@ -400,7 +401,7 @@ def main(argv=sys.argv):
  
     print() 
     logging.info(f'Reading {args.i}') 
-    probability_maps = tifffile.imread(args.i, key=[0, 1]) 
+    probability_maps = palom.reader.OmePyramidReader(args.i).pyramid[0][:2].compute()
     logging.info(f'Probability map shape: {probability_maps.shape}') 
 
     pixel_size = args.pixel_size
