@@ -61,7 +61,9 @@ def run_mcmicro(
     channel_names.append('Mask inner outline')
     
     if pmap_path is not None:
-        contour_probability_map = tifffile.imread(pmap_path, key=1)
+        contour_probability_map = (
+            palom.reader.OmePyramidReader(pmap_path).pyramid[0][1].compute()
+        )
         da_contour_probability_map = da.from_array(
             contour_probability_map, chunks=2048
         )
