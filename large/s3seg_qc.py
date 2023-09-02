@@ -86,11 +86,15 @@ def run_mcmicro(
     da_stack = da.array(out_channels)
 
     palom.pyramid.write_pyramid(
-        palom.pyramid.normalize_mosaics(da_stack),
+        [da_stack],
         out_path,
-        channel_names=channel_names,
+        channel_names=[channel_names],
         pixel_size=pixel_size,
-        downscale_factor=2
+        downscale_factor=2,
+        compression='zlib',
+        tile_size=1024,
+        save_RAM=True,
+        kwargs_tifffile=dict(software='s3segmenter-large v1.5.4')       
     )
 
     return 0

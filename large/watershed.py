@@ -23,7 +23,6 @@ logging.basicConfig(
     level=logging.INFO 
 ) 
  
-import save_tifffile_pyramid 
  
 def filter_label_area(label_img, area_min, area_max): 
     if np.all(label_img == 0): 
@@ -120,21 +119,27 @@ class WatershedSegmentor:
     def write(self, file_path, img=None, config_id=None): 
         file_path = pathlib.Path(file_path) 
         file_name = file_path.name 
+        if img is None: img = self.run(config_id, compute=False) 
         if file_name.endswith('.zarr'): 
-            if img is None: img = self.run(config_id, compute=False) 
             logging.info(f'Writing to {file_path}') 
             with dask.diagnostics.ProgressBar(): 
                 return img.to_zarr(file_path) 
         if file_name.endswith(('.ome.tiff', '.ome.tif')): 
-            if img is None: img = self.run(config_id) 
-            logging.info(f'Writing to {file_path}') 
+            logging.info(f'Writing to {file_path}')
+            pixel_size = self.pixel_size
             if self.pixel_size is None:
-                pixel_sizes = (1, 1)
-            else: 
-                pixel_sizes = (self.pixel_size, self.pixel_size)
-            return save_tifffile_pyramid.save_pyramid( 
-                img, file_path, is_mask=True, pixel_sizes=pixel_sizes
-            ) 
+                pixel_size = 1
+            return palom.pyramid.write_pyramid(
+                [img],
+                file_path,
+                pixel_size=pixel_size,
+                downscale_factor=2,
+                compression='zlib',
+                is_mask=True,
+                tile_size=1024,
+                save_RAM=True,
+                kwargs_tifffile=dict(software='s3segmenter-large v1.5.4')
+            )
         logging.warning('Write failed: output file type not supported') 
         return 
      
