@@ -478,12 +478,11 @@ def expand_mask_from_file(
         tifffile.imread(input_path, aszarr=True, series=0, level=0) 
     ) 
      
-    with dask.diagnostics.ProgressBar(): 
-        segmentor.write_expanded( 
-            expanded_path, 
-            expand_size, 
-            da.from_zarr(z).rechunk(2048) 
-        ) 
+    segmentor.write_expanded( 
+        expanded_path, 
+        expand_size, 
+        da.from_zarr(z).rechunk(2048) 
+    ) 
     return expanded_path 
  
 def difference_mask_from_file(
@@ -513,11 +512,10 @@ def difference_mask_from_file(
     segmentor = WatershedSegmentor( 
         None, None, pixel_size=pixel_size
     ) 
-    with dask.diagnostics.ProgressBar(): 
-        segmentor.write( 
-            file_path=output_path, 
-            img=out_mask 
-        ) 
+    segmentor.write( 
+        file_path=output_path, 
+        img=out_mask 
+    ) 
     return 
  
  
