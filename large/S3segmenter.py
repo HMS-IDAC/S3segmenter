@@ -89,7 +89,7 @@ def main(argv=sys.argv):
 
     s3seg_qc.run_mcmicro(
         out_path,
-        qc_dir / 'nucleiRingOutlines.ome.tif',
+        qc_dir / f"{img_stem}-nucleiRingOutlines.ome.tif",
         pmap_path=args.stackProbPath,
         img_path=args.imagePath,
         img_channels=img_channels,
