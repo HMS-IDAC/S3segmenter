@@ -21,7 +21,9 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(message)s (%(filename)s:%(lineno)s)", 
     datefmt="%Y-%m-%d %H:%M:%S", 
     level=logging.INFO 
-) 
+)
+
+import _version
  
  
 def filter_label_area(label_img, area_min, area_max): 
@@ -138,7 +140,7 @@ class WatershedSegmentor:
                 is_mask=True,
                 tile_size=1024,
                 save_RAM=True,
-                kwargs_tifffile=dict(software='s3segmenter-large v1.5.4')
+                kwargs_tifffile=dict(software=f"s3segmenter-large v{_version.VERSION}")
             )
         logging.warning('Write failed: output file type not supported') 
         return 

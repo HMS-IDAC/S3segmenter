@@ -7,6 +7,8 @@ import zarr
 import tifffile
 import palom
 
+import _version
+
 
 def mask_to_bound(
     img_da,
@@ -94,7 +96,7 @@ def run_mcmicro(
         compression='zlib',
         tile_size=1024,
         save_RAM=True,
-        kwargs_tifffile=dict(software='s3segmenter-large v1.5.4')       
+        kwargs_tifffile=dict(software=f"s3segmenter-large v{_version.VERSION}")       
     )
 
     return 0
