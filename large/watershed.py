@@ -413,10 +413,14 @@ def main(argv=sys.argv):
 
     pixel_size = args.pixel_size
     if pixel_size is None:
-        pixel_size = 1.0
-        logging.warning(
-            f"Pixel size not specified, using {pixel_size} micron as a placeholder"
-        ) 
+        try:
+            pixel_size = palom.reader.OmePyramidReader(args.i).pixel_size
+        except Exception as err:
+            print(err)
+            pixel_size = 1.0
+            logging.warning(
+                f"Pixel size not specified, using {pixel_size} µm as a placeholder"
+            ) 
  
     segmentor = WatershedSegmentor( 
         da.from_array(probability_maps[1], chunks=2048), 
