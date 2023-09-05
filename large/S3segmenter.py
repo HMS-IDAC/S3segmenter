@@ -3,12 +3,13 @@ import sys
 import pathlib 
  
 import watershed 
-import s3seg_util
 import s3seg_qc
 import ignored_args
 
 import logging
- 
+
+import palom.reader
+
 def main(argv=sys.argv): 
  
     parser = argparse.ArgumentParser( 
@@ -67,13 +68,14 @@ def main(argv=sys.argv):
         pixel_size = args.pixelSize
         logging.info(f"Pixel size: {pixel_size} (user supplied)")
     else:
-        pixel_size = s3seg_util.detect_pixel_size(img_path)
-        if pixel_size is None:
+        try:
+            pixel_size = palom.reader.OmePyramidReader(img_path).pixel_size
+        except Exception as err:
+            print(err)
             logging.error(
                 'Auto-detect pixel size failed, use `--pixelSize SIZE` to specify it'
             )
             return 1
-        logging.info(f"Pixel size: {pixel_size} (from ome-xml)")
 
     watershed.main([ 
         '', 
@@ -89,7 +91,7 @@ def main(argv=sys.argv):
 
     s3seg_qc.run_mcmicro(
         out_path,
-        qc_dir / 'nucleiRingOutlines.ome.tif',
+        qc_dir / f"{img_stem}-nucleiRingOutlines.ome.tif",
         pmap_path=args.stackProbPath,
         img_path=args.imagePath,
         img_channels=img_channels,
