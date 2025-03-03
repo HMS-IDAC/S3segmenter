@@ -115,7 +115,6 @@ def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,fileprefix,outputPath):
             threshold = threshold_otsu(image_gauss)
         mask=resize(image_gauss>threshold,(images.shape[1],images.shape[2]),order = 0)*TMAmask
         area.append(np.sum(np.sum(mask)))
-    os.mk    
     np.savetxt(outputPath + os.path.sep + fileprefix + '_area.csv',(np.transpose(np.asarray(area))),fmt='%10.5f')  
     return TMAmask
 
