@@ -47,7 +47,7 @@ class WindowView(object):
     def padded_shape(self):
         padded_shape = np.array(self.img_shape) + self.overlap_size
         n = np.ceil((padded_shape - self.block_size) / self.step_size)
-        padded_shape = (self.block_size + (n * self.step_size)).astype(np.int)
+        padded_shape = (self.block_size + (n * self.step_size)).astype(int)
         return tuple(padded_shape)
 
     @property 

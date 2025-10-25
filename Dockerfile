@@ -1,6 +1,10 @@
-FROM python:3.8.0
+FROM python:3.13.9
 
-RUN pip install numpy==1.22.3 scikit-learn scikit-image==0.20.0 matplotlib tifffile==2021.6.6 opencv-python==4.3.0.36 ome_types==0.5.3 imagecodecs
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache numpy scikit-learn scikit-image matplotlib tifffile opencv-python ome_types imagecodecs
 
 COPY S3segmenter.py ./app/S3segmenter.py
 COPY save_tifffile_pyramid.py ./app/save_tifffile_pyramid.py

@@ -16,7 +16,7 @@ from skimage.feature import peak_local_max
 from skimage.color import label2rgb
 from skimage.io import imsave,imread
 from skimage.segmentation import clear_border, watershed, find_boundaries
-from scipy.ndimage.filters import uniform_filter
+from scipy.ndimage import uniform_filter
 from os.path import *
 from os import listdir, makedirs, remove
 import pickle
@@ -65,22 +65,6 @@ def peak_local_max_mask(image, **kwargs):
     mask[tuple(idx.T)] = True
     return mask
 
-# Workaround for skimage bug in unpickling regionprops.
-# https://github.com/scikit-image/scikit-image/issues/6465
-class SerializableRegionProperties(skimage.measure._regionprops.RegionProperties):
-
-    def __init__(self, slice=None, label=None, label_image=None, intensity_image=None, cache_active=None):
-        super().__init__(slice, label, label_image, intensity_image, cache_active)
-        self._initialized = True
-
-    def __getattr__(self, attr):
-        if attr == "_initialized" or not self._initialized:
-            self.__init__()
-        super().__getattr__(attr)
-
-def wrap_props(p):
-    return SerializableRegionProperties(p.slice, p.label, p._label_image, p._intensity_image, p._cache_active)
-
 def contour_pm_watershed(
     contour_pm, sigma=2, h=0, tissue_mask=None,
     padding_mask=None, min_area=None, max_area=None
@@ -121,10 +105,10 @@ def contour_pm_watershed(
         np.greater(maxima, 0, out=maxima)
 
     if padded is None:
-        return maxima.astype(np.bool)
+        return maxima.astype(bool)
     else:
         padded[padded == 1] = maxima.flatten()
-        return padded.astype(np.bool)
+        return padded.astype(bool)
 
 def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,fileprefix,outputPath):
     nucleiCenters = nucleiPM[:,:,0]
@@ -174,7 +158,7 @@ def S3NucleiBypass(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=1)(delayed(props_of_keys)(wrap_props(prop), prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=1)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -201,7 +185,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(wrap_props(prop), prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -258,7 +242,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
         prop_keys = ['mean_intensity', 'area', 'solidity', 'label']
         mean_ints, areas, solidities, labels = np.array(
-            Parallel(n_jobs=6)(delayed(props_of_keys)(wrap_props(prop), prop_keys) 
+            Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
                 for prop in P
             )
         ).T
