@@ -8,6 +8,7 @@ import scipy.ndimage as ndi
 from skimage.morphology import *
 from skimage.morphology import extrema
 from skimage import morphology
+import skimage.measure._regionprops
 from skimage.measure import regionprops
 from skimage.transform import resize
 from skimage.filters import gaussian, threshold_otsu, threshold_local
@@ -58,6 +59,28 @@ def normI(I):
     J = J/(p99-p1);
     return J
 
+def peak_local_max_mask(image, **kwargs):
+    idx = peak_local_max(image, **kwargs)
+    mask = np.zeros_like(image, dtype=bool)
+    mask[tuple(idx.T)] = True
+    return mask
+
+# Workaround for skimage bug in unpickling regionprops.
+# https://github.com/scikit-image/scikit-image/issues/6465
+class SerializableRegionProperties(skimage.measure._regionprops.RegionProperties):
+
+    def __init__(self, slice=None, label=None, label_image=None, intensity_image=None, cache_active=None):
+        super().__init__(slice, label, label_image, intensity_image, cache_active)
+        self._initialized = True
+
+    def __getattr__(self, attr):
+        if attr == "_initialized" or not self._initialized:
+            self.__init__()
+        super().__getattr__(attr)
+
+def wrap_props(p):
+    return SerializableRegionProperties(p.slice, p.label, p._label_image, p._intensity_image, p._cache_active)
+
 def contour_pm_watershed(
     contour_pm, sigma=2, h=0, tissue_mask=None,
     padding_mask=None, min_area=None, max_area=None
@@ -73,12 +96,11 @@ def contour_pm_watershed(
             tissue_mask, padding_mask
         )
     
-    maxima = peak_local_max(
+    maxima = peak_local_max_mask(
         extrema.h_maxima(
             ndi.gaussian_filter(np.invert(contour_pm), sigma=sigma),
             h=h
         ),
-        indices=False,
         footprint=np.ones((3, 3))
     )
     maxima = label(maxima).astype(np.int32)
@@ -152,7 +174,7 @@ def S3NucleiBypass(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=1)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=1)(delayed(props_of_keys)(wrap_props(prop), prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -171,7 +193,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     nucleiCenters = nucleiPM[:,:,0]
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
     if nucleiRegion == 'localThreshold' or nucleiRegion == 'localMax':
-        Imax =  peak_local_max(extrema.h_maxima(255-nucleiContours,logSigma[0]),indices=False)
+        Imax =  peak_local_max_mask(extrema.h_maxima(255-nucleiContours,logSigma[0]))
         Imax = label(Imax).astype(np.int32)
         foregroundMask =  watershed(nucleiContours, Imax, watershed_line=True)
         P = regionprops(foregroundMask, np.amax(nucleiCenters) - nucleiCenters - nucleiContours)
@@ -179,7 +201,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(wrap_props(prop), prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -236,7 +258,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
         prop_keys = ['mean_intensity', 'area', 'solidity', 'label']
         mean_ints, areas, solidities, labels = np.array(
-            Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+            Parallel(n_jobs=6)(delayed(props_of_keys)(wrap_props(prop), prop_keys) 
                 for prop in P
             )
         ).T
@@ -349,7 +371,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata_args,s
 def S3punctaDetection(spotChan,mask,sigma,SD):
     Ilog = -gaussian_laplace(np.float32(spotChan),sigma)
     tissueMask = spotChan >0
-    fgm=peak_local_max(Ilog, indices=False,footprint=np.ones((3, 3)))*tissueMask
+    fgm=peak_local_max_mask(Ilog, footprint=np.ones((3, 3)))*tissueMask
     test=Ilog[fgm==1]
     med = np.median(test)
     mad = np.median(np.absolute(test - med))
