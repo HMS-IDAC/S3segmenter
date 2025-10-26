@@ -8,6 +8,7 @@ import scipy.ndimage as ndi
 from skimage.morphology import *
 from skimage.morphology import extrema
 from skimage import morphology
+import skimage.measure._regionprops
 from skimage.measure import regionprops
 from skimage.transform import resize
 from skimage.filters import gaussian, threshold_otsu, threshold_local
@@ -15,7 +16,7 @@ from skimage.feature import peak_local_max
 from skimage.color import label2rgb
 from skimage.io import imsave,imread
 from skimage.segmentation import clear_border, watershed, find_boundaries
-from scipy.ndimage.filters import uniform_filter
+from scipy.ndimage import uniform_filter
 from os.path import *
 from os import listdir, makedirs, remove
 import pickle
@@ -32,6 +33,7 @@ from rowit import WindowView, crop_with_padding_mask
 from save_tifffile_pyramid import save_pyramid
 import subprocess
 import ome_types
+import threadpoolctl
 
 
 def imshowpair(A,B):
@@ -58,6 +60,12 @@ def normI(I):
     J = J/(p99-p1);
     return J
 
+def peak_local_max_mask(image, **kwargs):
+    idx = peak_local_max(image, **kwargs)
+    mask = np.zeros_like(image, dtype=bool)
+    mask[tuple(idx.T)] = True
+    return mask
+
 def contour_pm_watershed(
     contour_pm, sigma=2, h=0, tissue_mask=None,
     padding_mask=None, min_area=None, max_area=None
@@ -73,12 +81,11 @@ def contour_pm_watershed(
             tissue_mask, padding_mask
         )
     
-    maxima = peak_local_max(
+    maxima = peak_local_max_mask(
         extrema.h_maxima(
             ndi.gaussian_filter(np.invert(contour_pm), sigma=sigma),
             h=h
         ),
-        indices=False,
         footprint=np.ones((3, 3))
     )
     maxima = label(maxima).astype(np.int32)
@@ -99,10 +106,10 @@ def contour_pm_watershed(
         np.greater(maxima, 0, out=maxima)
 
     if padded is None:
-        return maxima.astype(np.bool)
+        return maxima.astype(bool)
     else:
         padded[padded == 1] = maxima.flatten()
-        return padded.astype(np.bool)
+        return padded.astype(bool)
 
 def S3AreaSegmenter(nucleiPM, images, TMAmask, threshold,fileprefix,outputPath):
     nucleiCenters = nucleiPM[:,:,0]
@@ -152,7 +159,7 @@ def S3NucleiBypass(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=1)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=1,verbose=joblibVerbose)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -171,7 +178,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     nucleiCenters = nucleiPM[:,:,0]
     mask = resize(TMAmask,(nucleiImage.shape[0],nucleiImage.shape[1]),order = 0)>0
     if nucleiRegion == 'localThreshold' or nucleiRegion == 'localMax':
-        Imax =  peak_local_max(extrema.h_maxima(255-nucleiContours,logSigma[0]),indices=False)
+        Imax =  peak_local_max_mask(extrema.h_maxima(255-nucleiContours,logSigma[0]))
         Imax = label(Imax).astype(np.int32)
         foregroundMask =  watershed(nucleiContours, Imax, watershed_line=True)
         P = regionprops(foregroundMask, np.amax(nucleiCenters) - nucleiCenters - nucleiContours)
@@ -179,7 +186,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=numWorkers,verbose=joblibVerbose)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -210,9 +217,10 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
         maxArea = (logSigma[1]**2)*3/4
         minArea = (logSigma[0]**2)*3/4
-    
+
+        print(datetime.datetime.now(), '==> Performing watershed')
         foregroundMask = np.array(
-            Parallel(n_jobs=6)(delayed(contour_pm_watershed)(
+            Parallel(n_jobs=numWorkers,verbose=joblibVerbose)(delayed(contour_pm_watershed)(
                 img, sigma=logSigma[1]/30, h=logSigma[1]/30, tissue_mask=tm,
                 padding_mask=m, min_area=minArea, max_area=maxArea
             ) for img, tm, m in zip(nucleiContours, mask, padding_mask))
@@ -228,7 +236,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
         elif nucleiFilter == 'Int':
             int_img = nucleiImage
     
-        print('    ', datetime.datetime.now(), 'regionprops')
+        print(datetime.datetime.now(), '==> Filtering out low-confidence events')
         P = regionprops(foregroundMask, int_img)
     
         def props_of_keys(prop, keys):
@@ -236,7 +244,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
         prop_keys = ['mean_intensity', 'area', 'solidity', 'label']
         mean_ints, areas, solidities, labels = np.array(
-            Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+            Parallel(n_jobs=numWorkers,verbose=joblibVerbose)(delayed(props_of_keys)(prop, prop_keys) 
                 for prop in P
             )
         ).T
@@ -349,7 +357,7 @@ def exportMasks(mask,image,outputPath,filePrefix,fileName,commit,metadata_args,s
 def S3punctaDetection(spotChan,mask,sigma,SD):
     Ilog = -gaussian_laplace(np.float32(spotChan),sigma)
     tissueMask = spotChan >0
-    fgm=peak_local_max(Ilog, indices=False,footprint=np.ones((3, 3)))*tissueMask
+    fgm=peak_local_max_mask(Ilog, footprint=np.ones((3, 3)))*tissueMask
     test=Ilog[fgm==1]
     med = np.median(test)
     mad = np.median(np.absolute(test - med))
@@ -385,15 +393,32 @@ if __name__ == '__main__':
     parser.add_argument("--punctaSD", nargs = '+', type=float, default=[4])
     parser.add_argument("--saveMask",action='store_false')
     parser.add_argument("--saveFig",action='store_false')
+    parser.add_argument("--numWorkers", type=int, default=0, help="Parallel worker processes, recommend <= 4 (default=autodetect)")
+    parser.add_argument("--verbose", action="store_true", help="Enable for extra logging output")
     args = parser.parse_args()
-    
+
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
     contoursClassProbPath = args.contoursClassProbPath
     stackProbPath = args.stackProbPath
     maskPath = args.maskPath
-    
+    joblibVerbose = 10 if args.verbose else 0
+
+    threadpoolctl.threadpool_limits(1)
+    if args.numWorkers == 0:
+        if hasattr(os, 'sched_getaffinity'):
+            numCpus = len(os.sched_getaffinity(0))
+        else:
+            numCpus = multiprocessing.cpu_count()
+        numWorkers = min(numCpus, 4)
+        print(
+            f"Using {numWorkers} worker processes based on available CPU count ({numCpus})."
+        )
+        print()
+    else:
+        numWorkers = args.numWorkers
+
     commit = '1.3.11'#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
     metadata = getMetadata(imagePath,commit)
     
@@ -437,6 +462,8 @@ if __name__ == '__main__':
         TissueMaskChan = args.TissueMaskChan[:]
         TissueMaskChan[:] = [number - 1 for number in TissueMaskChan]#convert 1-based indexing to 0-based indexing        
         TissueMaskChan.append(nucMaskChan)
+
+    print(datetime.datetime.now(), '==> Preprocessing images')
 
 	#crop images if needed
     if args.crop == 'interactiveCrop':
@@ -513,6 +540,7 @@ if __name__ == '__main__':
     del nucleiPM
     # cytoplasm segmentation
     if args.segmentCytoplasm == 'segmentCytoplasm':
+        print(datetime.datetime.now(), '==> Segmenting cytoplasm')
         count =0
         if args.crop == 'noCrop' or args.crop == 'dearray' or args.crop == 'plate':
             cyto=np.empty((len(CytoMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.uint16)    
@@ -550,6 +578,7 @@ if __name__ == '__main__':
         
     detectPuncta = args.detectPuncta
     if (np.min(detectPuncta)>0):
+        print(datetime.datetime.now(), '==> Detecting puncta')
         detectPuncta[:] = [number - 1 for number in detectPuncta] #convert 1-based indexing to 0-based indexing    
         if len(detectPuncta) != len(args.punctaSigma):
             args.punctaSigma = args.punctaSigma[0] * np.ones(len(detectPuncta))
@@ -607,3 +636,5 @@ if __name__ == '__main__':
             is_mask=False,
             **metadata
             ) 
+
+    print(datetime.datetime.now(), '==> Done!')
