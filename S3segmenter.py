@@ -33,6 +33,7 @@ from rowit import WindowView, crop_with_padding_mask
 from save_tifffile_pyramid import save_pyramid
 import subprocess
 import ome_types
+import threadpoolctl
 
 
 def imshowpair(A,B):
@@ -158,7 +159,7 @@ def S3NucleiBypass(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFilter,nucleiRegi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=1)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=1,verbose=joblibVerbose)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -185,7 +186,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
         def props_of_keys(prop, keys):
             return [prop[k] for k in keys]
         
-        mean_ints, labels, areas = np.array(Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+        mean_ints, labels, areas = np.array(Parallel(n_jobs=numWorkers,verbose=joblibVerbose)(delayed(props_of_keys)(prop, prop_keys) 
 						for prop in P
 						)
 		        ).T
@@ -216,9 +217,10 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
         maxArea = (logSigma[1]**2)*3/4
         minArea = (logSigma[0]**2)*3/4
-    
+
+        print(datetime.datetime.now(), '==> Performing watershed')
         foregroundMask = np.array(
-            Parallel(n_jobs=6)(delayed(contour_pm_watershed)(
+            Parallel(n_jobs=numWorkers,verbose=joblibVerbose)(delayed(contour_pm_watershed)(
                 img, sigma=logSigma[1]/30, h=logSigma[1]/30, tissue_mask=tm,
                 padding_mask=m, min_area=minArea, max_area=maxArea
             ) for img, tm, m in zip(nucleiContours, mask, padding_mask))
@@ -234,7 +236,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
         elif nucleiFilter == 'Int':
             int_img = nucleiImage
     
-        print('    ', datetime.datetime.now(), 'regionprops')
+        print(datetime.datetime.now(), '==> Filtering out low-confidence events')
         P = regionprops(foregroundMask, int_img)
     
         def props_of_keys(prop, keys):
@@ -242,7 +244,7 @@ def S3NucleiSegmentationWatershed(nucleiPM,nucleiImage,logSigma,TMAmask,nucleiFi
     
         prop_keys = ['mean_intensity', 'area', 'solidity', 'label']
         mean_ints, areas, solidities, labels = np.array(
-            Parallel(n_jobs=6)(delayed(props_of_keys)(prop, prop_keys) 
+            Parallel(n_jobs=numWorkers,verbose=joblibVerbose)(delayed(props_of_keys)(prop, prop_keys) 
                 for prop in P
             )
         ).T
@@ -391,15 +393,32 @@ if __name__ == '__main__':
     parser.add_argument("--punctaSD", nargs = '+', type=float, default=[4])
     parser.add_argument("--saveMask",action='store_false')
     parser.add_argument("--saveFig",action='store_false')
+    parser.add_argument("--numWorkers", type=int, default=0, help="Parallel worker processes, recommend <= 4 (default=autodetect)")
+    parser.add_argument("--verbose", action="store_true", help="Enable for extra logging output")
     args = parser.parse_args()
-    
+
     imagePath = args.imagePath
     outputPath = args.outputPath
     nucleiClassProbPath = args.nucleiClassProbPath
     contoursClassProbPath = args.contoursClassProbPath
     stackProbPath = args.stackProbPath
     maskPath = args.maskPath
-    
+    joblibVerbose = 10 if args.verbose else 0
+
+    threadpoolctl.threadpool_limits(1)
+    if args.numWorkers == 0:
+        if hasattr(os, 'sched_getaffinity'):
+            numCpus = len(os.sched_getaffinity(0))
+        else:
+            numCpus = multiprocessing.cpu_count()
+        numWorkers = min(numCpus, 4)
+        print(
+            f"Using {numWorkers} worker processes based on available CPU count ({numCpus})."
+        )
+        print()
+    else:
+        numWorkers = args.numWorkers
+
     commit = '1.3.11'#subprocess.check_output(['git', 'describe', '--tags']).decode('ascii').strip()
     metadata = getMetadata(imagePath,commit)
     
@@ -443,6 +462,8 @@ if __name__ == '__main__':
         TissueMaskChan = args.TissueMaskChan[:]
         TissueMaskChan[:] = [number - 1 for number in TissueMaskChan]#convert 1-based indexing to 0-based indexing        
         TissueMaskChan.append(nucMaskChan)
+
+    print(datetime.datetime.now(), '==> Preprocessing images')
 
 	#crop images if needed
     if args.crop == 'interactiveCrop':
@@ -519,6 +540,7 @@ if __name__ == '__main__':
     del nucleiPM
     # cytoplasm segmentation
     if args.segmentCytoplasm == 'segmentCytoplasm':
+        print(datetime.datetime.now(), '==> Segmenting cytoplasm')
         count =0
         if args.crop == 'noCrop' or args.crop == 'dearray' or args.crop == 'plate':
             cyto=np.empty((len(CytoMaskChan),nucleiCrop.shape[0],nucleiCrop.shape[1]),dtype=np.uint16)    
@@ -556,6 +578,7 @@ if __name__ == '__main__':
         
     detectPuncta = args.detectPuncta
     if (np.min(detectPuncta)>0):
+        print(datetime.datetime.now(), '==> Detecting puncta')
         detectPuncta[:] = [number - 1 for number in detectPuncta] #convert 1-based indexing to 0-based indexing    
         if len(detectPuncta) != len(args.punctaSigma):
             args.punctaSigma = args.punctaSigma[0] * np.ones(len(detectPuncta))
@@ -613,3 +636,5 @@ if __name__ == '__main__':
             is_mask=False,
             **metadata
             ) 
+
+    print(datetime.datetime.now(), '==> Done!')
